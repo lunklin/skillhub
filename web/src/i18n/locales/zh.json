@@ -2735,6 +2735,9 @@
     }
   },
   "footer": {
+    "companyName": "广州长霖塑料制品有限公司",
+    "companyWebsite": "公司官网",
+    "companyLogoAlt": "CHEERY 长霖 — 广州长霖塑料制品有限公司",
     "license": "许可证",
     "contributing": "参与贡献",
     "changelog": "更新日志",

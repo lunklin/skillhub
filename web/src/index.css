@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Official CHEERY logo colors; see docs/cheery-brand.md. */
+.cheery-footer {
+  border-top: 3px solid #284c9b;
+  border-image: linear-gradient(to right, #d51618 0% 18%, #284c9b 18% 100%) 1;
+}
+
 @layer base {
   :root {
     --font-sans: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
