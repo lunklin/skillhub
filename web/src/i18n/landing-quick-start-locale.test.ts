@@ -40,16 +40,18 @@ describe('landing quick start locales', () => {
 
   it('keeps the native CLI guide bound to the selected registry', () => {
     expect(skillGuideTemplate).toContain('name: skillhub-cli')
-    expect(skillGuideTemplate).toContain('version: 2.0.2')
+    expect(skillGuideTemplate).toContain('version: 2.0.3-cheery.1')
     expect(skillGuideTemplate).toContain('reviewed CHEERY Fork build')
     expect(skillGuideTemplate).toContain('the `registry` field in `~/.skillhub/config.json`')
     expect(skillGuideTemplate).toContain('if no registry is configured, stop')
+    expect(skillGuideTemplate).toContain('Never turn an inherited public URL into an explicit `--registry` argument')
     expect(skillGuideTemplate).not.toContain('https://skill.xfyun.cn')
     expect(skillGuideTemplate).toContain('Do not install or update a CLI automatically')
     expect(skillGuideTemplate).not.toContain('${SKILLHUB_PUBLIC_BASE_URL}')
     expect(skillGuideTemplate).toContain('Treat `<registry>` below as a value to replace')
     expect(skillGuideTemplate).toContain([
       'skillhub install @global/skillhub-cli \\',
+      '  --version 2.0.3-cheery.1 \\',
       '  --scope user',
     ].join('\n'))
     expect(skillGuideTemplate).toContain('PowerShell 7')

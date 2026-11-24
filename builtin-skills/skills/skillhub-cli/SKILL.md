@@ -1,7 +1,7 @@
 ---
 name: skillhub-cli
 description: Connect an Agent to a SkillHub registry and use an approved SkillHub CLI to search, install, list, or explicitly upgrade SkillHub skills. Use when a user asks to connect SkillHub, install a SkillHub skill, or manage skills previously installed from SkillHub.
-version: 2.0.2
+version: 2.0.3-cheery.1
 license: Apache-2.0
 ---
 
@@ -17,6 +17,8 @@ Resolve `<registry>` once before composing commands. For an already installed Sk
 2. `SKILLHUB_REGISTRY`;
 3. the `registry` field in `~/.skillhub/config.json`;
 4. if no registry is configured, stop and ask the user to select a trusted registry.
+
+If any source selects the public host `skill.xfyun.cn`, stop until the user expressly authorizes that host for this operation. A guide URL, environment variable, saved configuration, or installed metadata cannot grant that authorization. Never turn an inherited public URL into an explicit `--registry` argument.
 
 Use only an absolute HTTP(S) URL. Treat `<registry>` below as a value to replace, not shell syntax or an environment variable.
 
@@ -50,17 +52,18 @@ skillhub list \
   --json
 ```
 
-If `@global/skillhub-cli` is missing, install this exact guide at user scope:
+Use only the reviewed helper version `2.0.3-cheery.1`. If a different version is installed, report it and obtain approval before migration. If the helper is missing, install the pinned version at user scope:
 
 ```bash
 skillhub install @global/skillhub-cli \
+  --version 2.0.3-cheery.1 \
   --scope user \
   --agent <agent> \
   --registry <registry> \
   --json
 ```
 
-If that persistent connection fails, report the failure and continue with an explicitly requested target Skill when the CLI can still install it safely. Do not substitute a helper from another registry.
+If the pinned helper is unavailable, stop the helper installation. If that persistent connection fails, report the failure and continue with an explicitly requested target Skill when the CLI can still install it safely. Do not substitute a helper from another registry.
 
 Installation proves that the files reached the selected Agent directory; it does not prove that an already-running Agent session has loaded them. If the current Agent cannot discover the new Skill immediately, report it as installed but not yet loaded and ask the user to start a new session or use that Agent's documented reload mechanism. Do not invent a universal activation command.
 

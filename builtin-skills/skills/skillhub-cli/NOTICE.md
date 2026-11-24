@@ -18,3 +18,7 @@ SkillHub adaptation version: `2.0.2`.
 - Preserved exact registry, coordinate, version, Agent target, authentication, and integrity boundaries.
 - Removed automatic public-registry fallback for exact installs and private discovery queries.
 - Required read-only launcher provenance checks and exact user confirmation before package-manager removal.
+
+## CHEERY Fork modifications
+
+Guide version `2.0.3-cheery.1` requires a reviewed Fork CLI, explicit approval for the public registry, and a version-pinned helper from the selected registry.

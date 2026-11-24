@@ -416,9 +416,9 @@ skillhub publish ./my-skill --namespace myspace --visibility private
 ```
 
 可见性选项：
-- `public`（默认）— 所有人可见
+- `public` — 所有人可见
 - `namespace-only` — 仅 namespace 成员可见
-- `private` — 仅自己可见
+- `private`（`publish` 默认值）— 私有上传生成候选版本，拥有私有发布权限的用户可另行确认。服务端不会为此可见性自动创建人工审核任务。
 
 提交被服务端接受后会输出当前状态和技能详情页 URL。`SCANNING`、`PENDING_REVIEW` 表示异步处理尚未完成；请在详情页确认最终发布状态。
 

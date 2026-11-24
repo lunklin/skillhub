@@ -77,6 +77,8 @@ artifacts_by_coordinate = {
 }
 legacy_coordinates = {("skillhub-hello", "1.0.0"), ("agentguard", "1.1")}
 runtime_coordinates = set(runtime_by_coordinate)
+assert ("skillhub-cli", "2.0.2") not in runtime_coordinates, "upstream helper can bootstrap the public registry"
+assert ("skillhub-cli", "2.0.3-cheery.1") in artifacts_by_coordinate
 assert legacy_coordinates <= runtime_coordinates
 packaged_runtime_coordinates = runtime_coordinates - legacy_coordinates
 assert packaged_runtime_coordinates <= set(artifacts_by_coordinate)

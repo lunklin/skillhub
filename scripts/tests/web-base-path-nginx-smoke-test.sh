@@ -116,11 +116,11 @@ fi
 # fetch it and is reachable through its single route under the configured path.
 guide=$(curl -fsS "$base/skillhub/registry/skill.md")
 printf '%s' "$guide" | grep -F 'removing the trailing `/registry/skill.md` from the URL used to fetch this guide' >/dev/null
-printf '%s' "$guide" | grep -F '4. `https://skill.xfyun.cn`.' >/dev/null
+printf '%s' "$guide" | grep -F 'if no registry is configured, stop' >/dev/null
 printf '%s' "$guide" | grep -F 'sibling `.skillhub/metadata.json`' >/dev/null
 printf '%s' "$guide" | grep -F '  --registry <registry> \' >/dev/null
 printf '%s' "$guide" | grep -F 'skillhub install @global/skillhub-cli' >/dev/null
-printf '%s' "$guide" | grep -F 'npm install --global @astron-team/skillhub' >/dev/null
+printf '%s' "$guide" | grep -F 'Do not install or update a CLI automatically' >/dev/null
 printf '%s' "$guide" | grep -F 'ask before querying another registry' >/dev/null
 printf '%s' "$guide" | grep -F 'skillhub login --registry <registry>' >/dev/null
 cache_control=$(curl -sSI "$base/skillhub/registry/skill.md" | awk -F': ' 'tolower($1) == "cache-control" { print $2 }' | tr -d '\r')
@@ -183,7 +183,7 @@ done
 default_guide=$(curl -fsS "$default_base/skillhub/registry/skill.md")
 printf '%s' "$default_guide" | grep -F 'removing the trailing `/registry/skill.md` from the URL used to fetch this guide' >/dev/null
 untrusted_https=$(curl -fsS -H 'X-Forwarded-Proto: https' "$default_base/skillhub/registry/skill.md")
-printf '%s' "$untrusted_https" | grep -F '4. `https://skill.xfyun.cn`.' >/dev/null
+printf '%s' "$untrusted_https" | grep -F 'if no registry is configured, stop' >/dev/null
 if printf '%s' "$default_guide" | grep -F '__SKILLHUB_PUBLIC_BASE_URL__' >/dev/null; then
   echo 'default Agent guide must not expose the runtime URL marker' >&2
   exit 1
@@ -235,7 +235,7 @@ done
 trusted_https=$(curl -fsS -H 'X-Forwarded-Proto: https' "$trusted_base/skillhub/registry/skill.md")
 printf '%s' "$trusted_https" | grep -F 'removing the trailing `/registry/skill.md` from the URL used to fetch this guide' >/dev/null
 trusted_malformed=$(curl -fsS -H 'X-Forwarded-Proto: https,http' "$trusted_base/skillhub/registry/skill.md")
-printf '%s' "$trusted_malformed" | grep -F '4. `https://skill.xfyun.cn`.' >/dev/null
+printf '%s' "$trusted_malformed" | grep -F 'if no registry is configured, stop' >/dev/null
 docker rm -f "$name_trusted" >/dev/null 2>&1 || true
 
 # Fixed-base image served via the bundled deploy configs: assets are baked under

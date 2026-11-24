@@ -22,7 +22,7 @@
 ## 配置、身份与本地状态
 
 [registry-service.ts](../../../cli/src/services/registry-service.ts) 定义 registry 优先级：
-显式参数 → `SKILLHUB_REGISTRY` → config → 内置默认；token 为显式参数 → `SKILLHUB_TOKEN` → 对应 registry 的存储凭证。
+显式参数 → `SKILLHUB_REGISTRY` → config。未配置时，网络操作应在发起请求前报错。指向讯飞公开 Registry 的环境变量或已存配置须由用户为本次操作显式指定 `--registry`。token 为显式参数 → `SKILLHUB_TOKEN` → 对应 registry 的存储凭证。
 修改时同步子进程集成测试，不只测 resolver。不同 registry 凭证不能串用；登出只移除目标凭证，
 不删除其他 registry、配置或安装记录。配置写入保留不属于本次更新的字段。
 

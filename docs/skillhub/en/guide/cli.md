@@ -458,9 +458,9 @@ skillhub publish ./my-skill --namespace myspace --visibility private
 ```
 
 Visibility options:
-- `public` (default) — Visible to everyone
+- `public` — Visible to everyone
 - `namespace-only` — Visible to namespace members only
-- `private` — Visible to yourself only
+- `private` (default for `publish`) — A private upload creates a candidate. A user with private publication permission can confirm it separately. The server does not create a manual review task for this visibility.
 
 After the server accepts the submission, the CLI shows its current status and detail URL. `SCANNING` and `PENDING_REVIEW` are asynchronous states, not final publication; check the detail page for completion.
 

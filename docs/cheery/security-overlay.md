@@ -17,3 +17,6 @@ tracing and email notifications. It does not change the storage provider, local 
 credentials, volumes or listening addresses. It does not prevent outbound network traffic:
 separate egress controls and an audit are required. If existing files or the runtime use a
 different topology, verify their effective settings and preserve them before applying changes.
+
+The Fork guide is packaged as `@global/skillhub-cli` version `2.0.3-cheery.1`.
+The Fork startup manifest omits the upstream 2.0.2 helper because its instructions select the public registry. Existing installations retain their versions. Build the Fork package with `make build-builtin-skills`, verify its SHA-256 in `builtin-skills/dist/artifacts.json`, and approve it for the internal registry before offering persistent Agent setup.
