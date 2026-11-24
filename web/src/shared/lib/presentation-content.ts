@@ -166,7 +166,9 @@ export const PRESENTATION_LINKS = {
 export type PresentationLink = keyof typeof PRESENTATION_LINKS
 
 export function presentationItemVisible(settings: SitePresentationSettings, section: PresentationSection, item: string): boolean {
-  return settings.sections[section].items?.[item] !== false
+  const configured = settings.sections[section].items?.[item]
+  if (typeof configured === 'boolean') return configured
+  return section !== 'footer' || !['developers', 'project', 'resources'].includes(item)
 }
 
 const hasUnsafeUrlCharacters = (value: string) => Array.from(value).some(character => character === '\\' || character.charCodeAt(0) <= 32 || character.charCodeAt(0) === 127)
