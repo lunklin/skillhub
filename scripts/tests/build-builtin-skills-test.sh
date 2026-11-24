@@ -25,56 +25,15 @@ cmp \
   "$REPO_ROOT/builtin-skills/skills/skillhub-cli/SKILL.md" \
   "$REPO_ROOT/web/src/docs/skill.md.template"
 test -f "$REPO_ROOT/builtin-skills/skills/skillhub-cli/references/cli-operations.md"
-grep -F 'npm install --global @astron-team/skillhub' \
-  "$REPO_ROOT/builtin-skills/skills/skillhub-cli/SKILL.md" >/dev/null
-grep -F 'version: 2.0.2' \
-  "$REPO_ROOT/builtin-skills/skills/skillhub-cli/SKILL.md" >/dev/null
-grep -F 'separately confirms removal of that exact identified launcher' \
-  "$REPO_ROOT/builtin-skills/skills/skillhub-cli/SKILL.md" >/dev/null
-grep -F 'Never unlink an executable directly' \
-  "$REPO_ROOT/builtin-skills/skills/skillhub-cli/SKILL.md" >/dev/null
-grep -F 'do not run the global installation or update yet' \
-  "$REPO_ROOT/builtin-skills/skills/skillhub-cli/SKILL.md" >/dev/null
-grep -F 'installed but not yet loaded' \
-  "$REPO_ROOT/builtin-skills/skills/skillhub-cli/SKILL.md" >/dev/null
-grep -F 'skillhub sync pull --namespace team-a' \
-  "$REPO_ROOT/builtin-skills/skills/skillhub-cli/references/cli-operations.md" >/dev/null
-grep -F 'skillhub publish ./my-skill' \
-  "$REPO_ROOT/builtin-skills/skills/skillhub-cli/references/cli-operations.md" >/dev/null
-grep -F '`--dry-run` sends the package bytes to the selected registry' \
-  "$REPO_ROOT/builtin-skills/skills/skillhub-cli/references/cli-operations.md" >/dev/null
-
-# Keep the launcher takeover decision executable as a contract instead of only
-# checking for isolated safety phrases. A connect request has three disjoint
-# states; the non-first-party state must identify provenance and obtain a
-# separate confirmation before the first permitted write.
-python3 - "$REPO_ROOT/builtin-skills/skills/skillhub-cli/SKILL.md" <<'PY'
-import sys
-from pathlib import Path
-
-guide = Path(sys.argv[1]).read_text(encoding="utf-8")
-missing = guide.index("If the command is missing")
-install = guide.index("npm install --global @astron-team/skillhub", missing)
-existing = guide.index("If the command exists")
-verified = guide.index("Treat an existing command as first-party only")
-foreign = guide.index("If package metadata proves another owner or package")
-confirm = guide.index("Only after the user separately confirms removal", foreign)
-
-assert missing < install < existing < verified < foreign < confirm
-inspection = guide[existing:verified]
-for required in ("exact command selected by the shell", "follow symlinks", "owner", "package manager or package"):
-    assert required in inspection, required
-for forbidden in ("npm install --global", "supported uninstall command", "unlink an executable"):
-    assert forbidden not in inspection, forbidden
-assert "resolved package metadata proves" in guide[verified:foreign]
-assert "installing package is `@astron-team/skillhub`" in guide[verified:foreign]
-assert "even when it prints `SkillHub CLI <version>`" in guide[foreign:confirm]
-
-authorization = guide[guide.index("An explicit request to connect SkillHub authorizes"):]
-assert "does not authorize removing another `skillhub` launcher" in authorization
-assert "Launcher removal requires the separate, exact confirmation" in authorization
-assert "If the owner or package source cannot be proven, stop" in guide
-PY
+grep -F 'reviewed CHEERY Fork build' "$REPO_ROOT/builtin-skills/skills/skillhub-cli/SKILL.md" >/dev/null
+grep -F 'if no registry is configured, stop' "$REPO_ROOT/builtin-skills/skills/skillhub-cli/SKILL.md" >/dev/null
+grep -F 'obtain explicit authorization before connecting or migrating' "$REPO_ROOT/builtin-skills/skills/skillhub-cli/SKILL.md" >/dev/null
+grep -F 'Do not install or update a CLI automatically' "$REPO_ROOT/builtin-skills/skills/skillhub-cli/SKILL.md" >/dev/null
+grep -F '`--dry-run` sends the package bytes to the selected registry' "$REPO_ROOT/builtin-skills/skills/skillhub-cli/references/cli-operations.md" >/dev/null
+if grep -F 'npm install --global @astron-team/skillhub' "$REPO_ROOT/builtin-skills/skills/skillhub-cli/SKILL.md" >/dev/null; then
+  echo 'Guide must not install an unreviewed CLI automatically' >&2
+  exit 1
+fi
 
 # The guide response stays constant-time: its request handler returns the
 # startup-loaded template without network calls or directory traversal. The

@@ -99,7 +99,7 @@ describe('publish command — P0', () => {
     expect(result.stderr).toContain('zip')
   })
 
-  test('directory happy path: exit 0, default namespace=global, fileName ends in .zip, visibility=PUBLIC', async () => {
+  test('directory happy path: exit 0, default namespace=global, fileName ends in .zip, visibility=PRIVATE', async () => {
     const env = await createTempHome()
     registry = await startFakeRegistry({ token: 'sk_ok' })
     await login(env, registry.url)
@@ -114,7 +114,7 @@ describe('publish command — P0', () => {
     expect(registry.received.publish).not.toBeNull()
     expect(registry.received.publish!.namespace).toBe('global')
     expect(registry.received.publish!.fileName).toMatch(/\.zip$/)
-    expect(registry.received.publish!.visibility).toBe('PUBLIC')
+    expect(registry.received.publish!.visibility).toBe('PRIVATE')
   })
 
   test('directory publish excludes local SkillHub installation metadata', async () => {

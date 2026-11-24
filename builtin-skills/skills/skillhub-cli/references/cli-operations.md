@@ -96,7 +96,7 @@ Inspect the package and require a root-level `SKILL.md`. Validate against the se
 ```bash
 skillhub publish ./my-skill \
   --namespace team-a \
-  --visibility public \
+  --visibility private \
   --registry <registry> \
   --dry-run
 ```

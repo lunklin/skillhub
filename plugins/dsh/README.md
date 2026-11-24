@@ -6,7 +6,7 @@ SkillHub 的 DSH 原生插件。在 DSH 侧栏打开 **技能中心**，匿名�
 
 `0.2.0` 新增来源可核验的搜索安装状态：广场卡片和对话工具可识别当前来源的受管理安装版本、用户/项目范围及异常记录；对话保留查询时快照。未发现本来源记录不代表其他市场或手工安装不存在，文件存在也不代表 DSH 已启用该技能。按来源、命名空间和技能标识匹配；不按同名目录认领其他来源技能。
 
-`0.2.1` 缺省连接 `https://skill.xfyun.cn`；显式空串或仅空白仍表示断开，已有自定义地址保留。插件不继承 CLI 的默认地址或凭证。
+未配置来源时保持断开；显式空串或仅空白同样表示断开，已有自定义地址保留。插件不继承 CLI 的默认地址或凭证。
 
 `0.4.0` 使用独立标签 `dsh-v0.4.0`，提供技能案例与原生输入框衔接、对话管理已安装技能及按安装位置独立维护版本。保留 `0.3.1` 的双 RC 兼容范围。公开可用状态以 npm 为准；本地构建的 tarball 可按下文独立验证。
 
@@ -110,7 +110,7 @@ dsh plugin --profile skillhub-test add @astron-team/skillhub-dsh@0.6.4 --ignore-
 dsh --profile skillhub-test --host 127.0.0.1 --port 0 --no-open
 ```
 
-`skillhub-test` 替换为实际 Web Profile；首次创建方法见下一节。未配置 `registryUrl` 时默认使用 `https://skill.xfyun.cn`。如需自建实例，在插件设置中修改来源并测试、保存；显式保存空地址可断开。npm 查询或下载失败与插件加载失败应分别诊断。
+`skillhub-test` 替换为实际 Web Profile；首次创建方法见下一节。未配置 `registryUrl` 时保持断开。在插件设置中选择可信来源、测试并保存；显式保存空地址可断开。npm 查询或下载失败与插件加载失败应分别诊断。
 
 ## 从旧版本升级
 
@@ -162,7 +162,7 @@ Loader entry ID 为 `astron-skillhub`；`skillhub` 是 Host/Remote 服务名。�
 
 | 字段 | 行为 |
 | --- | --- |
-| `registryUrl` | Registry 基础地址；缺省为 `https://skill.xfyun.cn`；显式空串或仅空白断开，不回退；自定义值保留 |
+| `registryUrl` | Registry 基础地址；缺省为空并保持断开；显式空串或仅空白断开，不回退；自定义值保留 |
 | `savedRegistries` | 可选具名来源列表 `[{ name, url }]`；缺省为空，`registryUrl` 仍是唯一当前来源 |
 | `detailTabs.versions` | 版本历史显示策略 |
 | `detailTabs.securityAudit` | 安全审核显示策略 |

@@ -25,6 +25,15 @@ async function save(home: string, name: string, value: unknown) {
 }
 
 describe('doctor --health subprocess contract', () => {
+  test('missing registry fails closed without creating local state', async () => {
+    const f = await fixture()
+    const result = await runCli(['doctor', '--health', '--offline', '--json'], f.env, { cwd: f.cwd })
+    const report = JSON.parse(result.stdout)
+    expect(result.exitCode).toBe(5)
+    expect(report.registry).toBeNull()
+    expect(report.checks.some((check: { code: string }) => check.code === 'REGISTRY_UNRESOLVED')).toBe(true)
+    expect(await readdir(f.home)).toEqual([])
+  })
   test('offline health emits a report without creating state or making HTTP requests', async () => {
     const f = await fixture(); let calls = 0
     const url = registry(() => { calls++; return new Response('unexpected') })

@@ -27,7 +27,7 @@ const ACCESS_MODES: AccessModeOption[] = [
 
 function getRegistryUrl(): string {
   if (typeof window === 'undefined') {
-    return 'https://skill.xfyun.cn'
+    throw new Error('Registry URL is unavailable without a browser location')
   }
 
   return resolvePublicRegistryUrl(

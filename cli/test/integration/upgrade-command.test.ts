@@ -40,6 +40,26 @@ async function exists(path: string): Promise<boolean> {
 }
 
 describe('upgrade command', () => {
+  test('blocks a saved public registry before resolving credentials or contacting it', async () => {
+    const env = await createTempHome()
+    const skill = { namespace: 'global', slug: 'legacy', version: '1.0.0', versionId: 1, ...makeSkill('# legacy') }
+    const registry = await startFakeRegistry({ skills: [skill] })
+    registries.push(registry)
+    const rootDir = join(env.cwd, 'skills')
+    await mkdir(rootDir, { recursive: true })
+    const installed = await runCli(['install', '@global/legacy', '--dir', rootDir, '--registry', registry.url], { HOME: env.home, USERPROFILE: env.home })
+    expect(installed.exitCode).toBe(0)
+    const inventoryPath = join(env.home, '.skillhub', 'inventory.json')
+    const inventory = JSON.parse(await readFile(inventoryPath, 'utf-8'))
+    inventory.records[0].registry = 'https://skill.xfyun.cn'
+    await writeFile(inventoryPath, JSON.stringify(inventory))
+    let tokenLookups = 0
+    const plan = await planSkillUpgrades({ coordinates: ['@global/legacy'], force: false, home: env.home, tokenForRegistry: async () => { tokenLookups++; return undefined } })
+    expect(plan.blocked).toBe(1)
+    expect(plan.items[0]?.reason).toContain('public registry')
+    expect(tokenLookups).toBe(0)
+  })
+
   test('check is side-effect free and execute upgrades an installed skill', async () => {
     const env = await createTempHome()
     const skill = {

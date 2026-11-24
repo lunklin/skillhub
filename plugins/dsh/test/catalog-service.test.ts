@@ -5,16 +5,16 @@ import { Config } from '../src/host/config.ts';
 import type { TabMode } from '../src/host/types.ts';
 
 describe('native catalog service', () => {
-  test.each([undefined, {}])('missing Registry uses the official default without fetching (%j)', async configuration => {
+  test.each([undefined, {}])('missing Registry stays disconnected without fetching (%j)', async configuration => {
     const fetchSpy = spyOn(globalThis, 'fetch').mockImplementation(Object.assign(
       () => { throw new Error('Unexpected network request.'); }, { preconnect: fetch.preconnect }));
     const ctx = new Context();
     const fiber = ctx.plugin(SkillHubService, configuration);
     try {
       await fiber;
-      expect(Config(configuration).get()).toMatchObject({ registryUrl: 'https://skill.xfyun.cn' });
+      expect(Config(configuration).get()).toMatchObject({ registryUrl: '' });
       expect(ctx.skillhub.getContext()).toMatchObject({
-        configured: true, registryUrl: 'https://skill.xfyun.cn',
+        configured: false, registryUrl: '',
         detailTabs: { versions: 'auto', securityAudit: 'auto', reviews: 'auto' },
       });
       expect(fetchSpy).not.toHaveBeenCalled();

@@ -32,7 +32,7 @@ export async function publishCommand(path: string, options: PublishCommandOption
   const registry = resolveRegistry(options, process.env, await configStore.read())
   const token = resolveToken(options, process.env, await credentialsStore.getToken(registry))
   const namespace = options.namespace ?? 'global'
-  const visibility = options.visibility ?? 'public'
+  const visibility = options.visibility ?? 'private'
 
   if (!token) {
     throw new CliError('authentication required for publish', EXIT.auth, { next: 'run `skillhub login`' })
@@ -63,6 +63,7 @@ export async function publishCommand(path: string, options: PublishCommandOption
   const client = new SkillHubClient(registry, token)
 
   if (options.dryRun) {
+    process.stderr.write('Warning: --dry-run uploads the ZIP to the selected registry for validation.\n')
     const validation = await client.validatePublish(namespace, archiveBlob, toServerVisibility(visibility), archiveName)
     const result = { ...validation, ...examples, warnings: [...new Set([...validation.warnings, ...examples.warnings])] }
 

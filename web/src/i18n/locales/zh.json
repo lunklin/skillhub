@@ -222,8 +222,8 @@
         "cli": "CLI"
       },
       "cli": {
-        "description": "安装 SkillHub CLI 到本地，后续可运行 skillhub install 安装技能",
-        "command": "npm i -g @astron-team/skillhub"
+        "description": "先使用已審核的 CHEERY Fork CLI；確認版本後可安裝技能",
+        "command": "skillhub version"
       },
       "agent": {
         "description": "发送提示词给你的 Agent，以设置SkillHub Registry",
@@ -232,8 +232,8 @@
       },
       "human": {
         "description": "使用 SkillHub CLI 搜索和安装技能",
-        "command": "npx @astron-team/skillhub@latest search <keyword> --registry https://www.example.com",
-        "commandTemplate": "npx @astron-team/skillhub@latest search <keyword> --registry {{url}}"
+        "command": "skillhub search <keyword> --registry https://www.example.com",
+        "commandTemplate": "skillhub search <keyword> --registry {{url}}"
       },
       "steps": {
         "configureEnv": {

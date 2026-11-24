@@ -58,7 +58,7 @@ The active registry is resolved in the following priority order:
 1. `--registry <url>` command-line argument
 2. `SKILLHUB_REGISTRY` environment variable
 3. `registry` in `~/.skillhub/config.json`
-4. Default value `https://skill.xfyun.cn`
+4. If none is configured, stop and select a trusted registry.
 
 ```bash
 # Temporarily use another registry

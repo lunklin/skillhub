@@ -55,7 +55,7 @@ export function buildSkillhubInstallCommand(
   }
   const coordinate = buildSkillhubCoordinate(namespace, slug)
   const versionArg = version ? ` --version ${version}` : ''
-  return `npx @astron-team/skillhub@latest install ${coordinate}${versionArg} --registry ${baseUrl}`
+  return `skillhub install ${coordinate}${versionArg} --registry ${baseUrl}`
 }
 
 interface CommandBlockProps {

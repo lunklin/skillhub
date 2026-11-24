@@ -1,54 +1,32 @@
 ---
 name: skillhub-cli
-description: Connect an Agent to a SkillHub registry and use the official SkillHub CLI to search, install, list, or explicitly upgrade SkillHub skills. Use when a user asks to connect SkillHub, install a SkillHub skill, or manage skills previously installed from SkillHub.
+description: Connect an Agent to a SkillHub registry and use an approved SkillHub CLI to search, install, list, or explicitly upgrade SkillHub skills. Use when a user asks to connect SkillHub, install a SkillHub skill, or manage skills previously installed from SkillHub.
 version: 2.0.2
 license: Apache-2.0
 ---
 
 # SkillHub CLI
 
-Use the registry that supplied this guide to connect the current Agent and manage SkillHub packages with the first-party `@astron-team/skillhub` CLI.
+Use the registry that supplied this guide to connect the current Agent and manage SkillHub packages with the reviewed CHEERY Fork CLI.
 
 ## Resolve The Registry
 
-Resolve `<registry>` once before composing commands. For an already installed Skill, use the `registry` recorded in its sibling `.skillhub/metadata.json`; that source is authoritative for later searches and upgrades. Otherwise resolve in this order:
+Resolve `<registry>` once before composing commands. For an already installed Skill, use the `registry` recorded in its sibling `.skillhub/metadata.json`; that source identifies later searches and upgrades. If it points to the public iFLYTEK registry, warn the user and obtain explicit authorization before connecting or migrating; never rewrite the metadata automatically. Otherwise resolve in this order:
 
 1. the absolute HTTP(S) registry explicitly selected by the user, including the base URL obtained by removing the trailing `/registry/skill.md` from the URL used to fetch this guide;
 2. `SKILLHUB_REGISTRY`;
 3. the `registry` field in `~/.skillhub/config.json`;
-4. `https://skill.xfyun.cn`.
+4. if no registry is configured, stop and ask the user to select a trusted registry.
 
 Use only an absolute HTTP(S) URL. Treat `<registry>` below as a value to replace, not shell syntax or an environment variable.
 
 Keep the exact registry selected by the user for the current request. Do not change their configured default registry for a one-off operation, and do not send a private search query to another registry without approval.
 
-## Use The First-Party CLI
+## Use The Approved CLI
 
-First determine whether `skillhub` exists on `PATH`. On POSIX shells use `command -v skillhub`; in PowerShell use `(Get-Command skillhub -ErrorAction SilentlyContinue).Source`. If the command is missing, install the latest first-party CLI globally so future manual `skillhub` commands use this implementation:
+Find `skillhub` with `command -v skillhub` on POSIX or `(Get-Command skillhub -ErrorAction SilentlyContinue).Source` on PowerShell. Inspect the resolved path, symlink target, package provenance, and version before using it. Use only a reviewed CHEERY Fork build with the fail-closed registry behavior. If the command is absent, its provenance is unclear, or it is an unreviewed upstream release, stop and report the finding; request the reviewed build through the established deployment process.
 
-```bash
-npm install --global @astron-team/skillhub
-skillhub version
-```
-
-If the command exists, do not run the global installation or update yet because its package-manager shim could overwrite the existing launcher. Inspect the existing command without changing anything: resolve the exact command selected by the shell, follow symlinks to the final target, and identify its owner and installing package manager or package. Run `skillhub version` as an additional compatibility check, not as proof of ownership. Do not infer identity from the command name or output alone.
-
-Treat an existing command as first-party only when its resolved package metadata proves that its installing package is `@astron-team/skillhub` and its output matches `SkillHub CLI <version>`. Then connecting authorizes updating it to the latest release with the same global npm command. Verify both the package source and `skillhub version` again afterward.
-
-If package metadata proves another owner or package, or the version output is unexpected, treat it as non-first-party even when it prints `SkillHub CLI <version>`. Report the resolved path, final target, owner, package source, and version output to the user.
-
-Only after the user separately confirms removal of that exact identified launcher may you use its package manager's supported uninstall command, refresh command lookup, and install the first-party CLI. Never unlink an executable directly, remove an identity-unknown or system-managed command, use elevated privileges, edit shell startup files, or delete a directory merely to take over the command. If the owner or package source cannot be proven, stop and give the user the resolved path and read-only findings.
-
-Replacing the executable must not replace the other tool's data. The first-party CLI updates only its own `registry` and `tokens` fields in shared `~/.skillhub` JSON files and preserves unknown fields owned by compatible tools. Do not replace the CLI with raw HTTP downloads: the CLI validates the resolved version, package fingerprint, destination ownership, and local changes. Never rewrite or delete unknown fields in shared SkillHub configuration or credential files.
-
-Before using an operation or flag not shown in this Skill, inspect both live help surfaces for the selected CLI:
-
-```bash
-skillhub help <command>
-skillhub <command> --help
-```
-
-Repository documentation may describe unreleased behavior. If neither live help surface exposes a proposed command or flag, do not use it. Require Node.js 18 or newer when using the npm package.
+Do not install or update a CLI automatically, overwrite another launcher, change shell startup files, or remove configuration, credentials, or installed Skills. Inspect both `skillhub help <command>` and `skillhub <command> --help` before using a command or flag not shown here.
 
 ## Choose The Flow
 
@@ -57,7 +35,7 @@ Repository documentation may describe unreleased behavior. If neither live help 
 - **Discover a Skill:** search this registry first. If it is unavailable or has no suitable result, report that outcome and ask before querying another registry.
 - **Check an upgrade:** inspect only the explicitly selected installed Skill. Never upgrade every installation implicitly.
 
-An explicit request to connect SkillHub authorizes installing the latest first-party CLI globally. It does not authorize removing another `skillhub` launcher, replacing Skill files with local changes, changing registries, publishing content, using elevated privileges, or deleting third-party configuration or credentials. Launcher removal requires the separate, exact confirmation described above.
+A request to connect does not authorize changing the CLI installation, replacing local changes, changing registries, publishing content, or deleting configuration or credentials.
 
 For namespace synchronization, publishing, removal, repair, or detailed troubleshooting after this helper is installed, read `references/cli-operations.md`. Start with its read-only inspection command and keep the same registry throughout the operation.
 

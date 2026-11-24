@@ -45,6 +45,8 @@ describe('publish --dry-run', () => {
 
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain('Validation passed')
+    expect(result.stderr).toContain('--dry-run uploads the ZIP')
+    expect(registry.received.validate!.visibility).toBe('PRIVATE')
     expect(registry.received.validate).not.toBeNull()
     expect(registry.received.validate!.namespace).toBe('global')
     expect(registry.received.publish).toBeNull()

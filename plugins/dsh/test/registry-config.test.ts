@@ -7,8 +7,8 @@ import type { SkillHubConfig } from '../src/host/types.ts';
 const base: SkillHubConfig = { registryUrl: 'https://a.example', detailTabs: { versions: 'auto', reviews: 'hide', securityAudit: 'show' },
   savedRegistries: [{ name: 'A', url: 'https://a.example/' }, { name: 'B', url: 'https://b.example' }] };
 describe('saved registry configuration', () => {
-  test('legacy default, custom source and explicit disconnect survive schema resolution', () => {
-    expect(Config({}).get()).toMatchObject({ registryUrl: 'https://skill.xfyun.cn', savedRegistries: [] });
+  test('missing source disconnects and explicit custom source survives schema resolution', () => {
+    expect(Config({}).get()).toMatchObject({ registryUrl: '', savedRegistries: [] });
     expect(Config({ registryUrl: '' }).get().registryUrl).toBe('');
     const custom = Config({ registryUrl: 'https://custom.example' }).get();
     expect(savedRegistryOptions(custom)).toEqual([{ name: '当前来源', url: 'https://custom.example' }]);
