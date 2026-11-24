@@ -40,10 +40,26 @@ beforeEach(() => { presentationSettings = undefined; pathname = '/dashboard'; re
 afterEach(cleanup)
 
 describe('shared console layout composition', () => {
+  it('shows the verified company identity and retains legal links when optional groups are hidden', () => {
+    render(<Layout />)
+    const footer = screen.getByRole('contentinfo')
+    expect(within(footer).getByRole('img', { name: 'footer.companyLogoAlt' }).getAttribute('src')).toBe('/brand/cheery-logo.png')
+    expect(within(footer).getByText('footer.companyName')).toBeTruthy()
+    for (const title of ['developersTitle', 'projectTitle', 'resourcesTitle'] as const) {
+      expect(within(footer).queryByText(PRESENTATION_CONTENT.footer[title])).toBeNull()
+    }
+    expect(within(footer).getByRole('link', { name: 'footer.marketplace' }).getAttribute('href')).toBe('/search')
+    expect(within(footer).getByRole('link', { name: 'footer.license' }).getAttribute('href')).toContain('/LICENSE')
+    expect(within(footer).getByRole('link', { name: 'footer.privacy' }).getAttribute('href')).toBe('/privacy')
+    expect(within(footer).getByRole('link', { name: 'footer.terms' }).getAttribute('href')).toBe('/terms')
+  })
+
   it('binds footer copy and hides groups without empty desktop columns', () => {
     presentationSettings = defaultSitePresentation()
+    presentationSettings.sections.footer.items = { developers: true, project: true, resources: true }
     for (const slot of Object.keys(PRESENTATION_CONTENT.footer)) presentationSettings.sections.footer.texts[slot] = { en: `footer-${slot}` }
     presentationSettings.links.repository = 'https://team.example/source'
+    presentationSettings.links.license = 'https://team.example/license'
     const view = render(<Layout />)
     const footer = screen.getByRole('contentinfo')
     for (const slot of Object.keys(PRESENTATION_CONTENT.footer)) expect(footer.textContent).toContain(`footer-${slot}`)
@@ -51,6 +67,9 @@ describe('shared console layout composition', () => {
     presentationSettings = { ...presentationSettings, sections: { ...presentationSettings.sections, footer: { ...presentationSettings.sections.footer, items: { developers: false, project: false, resources: false } } } }
     view.rerender(<Layout />)
     expect(within(footer).queryByText('footer-developersTitle')).toBeNull()
+    expect(within(footer).getByRole('link', { name: 'footer-licenseLabel' }).getAttribute('href')).toBe('https://team.example/license')
+    expect(within(footer).getByRole('link', { name: 'footer-privacyLabel' })).toBeTruthy()
+    expect(within(footer).getAllByRole('link', { name: 'footer-termsLabel' })).toHaveLength(1)
     expect(footer.querySelector('.md\\:grid-cols-2')).toBeTruthy()
     presentationSettings.sections.footer.enabled = false
     view.rerender(<Layout />)

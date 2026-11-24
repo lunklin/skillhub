@@ -1,0 +1,6 @@
+[environments.cheery-preview]
+label = "CHEERY footer · synthetic UI preview"
+start = "cd web && npx --yes pnpm@10.33.0 install --frozen-lockfile && npx --yes pnpm@10.33.0 exec vite --config vite.preview.config.ts --host 127.0.0.1 --port $MULTICA_PORT --strictPort"
+url = "http://127.0.0.1:$MULTICA_PORT"
+ready = "http://127.0.0.1:$MULTICA_PORT/api/v1/site-presentation"
+ttl = "168h"
