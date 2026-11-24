@@ -11,7 +11,7 @@ Before a command writes local or registry state, establish the exact registry, c
 optional version, Agent and scope or directory, existing installation ownership, and local-change
 status. Treat every coordinate, version, query, and path supplied by a user as one quoted argument.
 
-Start with the read-only operation in this table. Obtain explicit approval before the corresponding
+Start with the inspection operation in this table. Network reads disclose the request to the selected registry. Obtain explicit approval before the corresponding
 write unless the user's current request already names that exact action and target.
 
 | Task | Inspect first | Write |
@@ -19,7 +19,7 @@ write unless the user's current request already names that exact action and targ
 | Install | `search`, `list` | `install` |
 | Upgrade | `list`, `upgrade --check` | `upgrade` |
 | Namespace sync | `sync status`, `sync diff`, `sync pull --check` | selected `sync pull` or `sync push` |
-| Publish | inspect package, `publish --dry-run` | `publish` |
+| Publish | inspect local package and destination | `publish --dry-run` (uploads the ZIP), then `publish` |
 | Remove | `list` | precise `remove` |
 
 Treat a current request that names the exact action and target as approval for that action. Otherwise,
@@ -76,7 +76,7 @@ skillhub sync pull --namespace team-a \
 An empty interactive selection changes nothing. Do not add `--force` for local changes or `--prune`
 for orphaned Skills without approval for the exact affected paths.
 
-Before upload, validate without creating a version:
+Before validation, confirm the registry and obtain authorization to send the selected local packages. `sync push --dry-run` uploads their ZIP bytes to the registry for validation without creating a version:
 
 ```bash
 skillhub sync push --all \

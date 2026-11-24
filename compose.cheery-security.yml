@@ -1,0 +1,23 @@
+# Add after the existing release and local deployment files.
+# This overlay contains no credentials and does not configure analytics or storage.
+services:
+  server:
+    environment:
+      SKILLHUB_BUILTIN_SKILLS_ENABLED: 'false'
+      SKILLHUB_SECURITY_SCANNER_ENABLED: 'true'
+      SKILLHUB_SCANNER_USE_BEHAVIORAL: 'true'
+      SKILLHUB_SCANNER_USE_LLM: 'false'
+      SKILLHUB_SCANNER_USE_AI_DEFENSE: 'false'
+      SKILLHUB_SCANNER_USE_VIRUSTOTAL: 'false'
+      SKILLHUB_SCANNER_USE_TRIGGER: 'false'
+      SKILLHUB_BUSINESS_LOGS_ENABLED: 'false'
+      SKILLHUB_BUSINESS_LOGS_ENDPOINT: ''
+      SKILLHUB_TRACING_MODE: 'none'
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: ''
+      SKILLHUB_NOTIFICATION_EMAIL_ENABLED: 'false'
+      SKILLHUB_AUTH_MOCK_ENABLED: 'false'
+  skill-scanner:
+    environment:
+      SKILL_SCANNER_LLM_API_KEY: ''
+      SKILL_SCANNER_LLM_BASE_URL: ''
+      SKILL_SCANNER_LLM_MODEL: ''

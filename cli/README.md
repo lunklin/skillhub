@@ -5,14 +5,8 @@ SkillHub CLI is the official command-line tool for SkillHub, designed for search
 ## 📦 Installation
 
 ```bash
-# Install globally via npm
-npm install -g @astron-team/skillhub
-
-# Or run directly with npx
-npx @astron-team/skillhub@latest version
-
-# Or install globally via Bun
-bun add -g @astron-team/skillhub
+# Use a reviewed CHEERY Fork CLI supplied through the approved release process
+skillhub version
 ```
 
 ## 🚀 Quick Start
@@ -96,7 +90,7 @@ explicit token-based login and all other authenticated commands is:
 ### Login
 
 ```bash
-# Interactive login: opens the registry's verification page and displays a user code
+# Interactive login: prints the verification URL and user code
 skillhub login
 
 # Interactive login on a remote/headless terminal
@@ -106,10 +100,9 @@ skillhub login --no-open --registry https://skillhub.example.com
 skillhub login --token sk_xxx --registry https://skillhub.example.com
 ```
 
-During interactive login, complete authentication in the browser and enter the displayed user code.
+During interactive login, inspect the displayed verification URL before opening it manually; the page may redirect externally. Complete authentication and enter the displayed user code.
 The CLI polls only until the server-provided expiry. It then validates the issued token, stores it in
-`~/.skillhub/credentials.json`, and writes the registry to `~/.skillhub/config.json`. `--no-open`
-suppresses automatic browser launch while retaining the verification URL and code in the terminal.
+`~/.skillhub/credentials.json`, and writes the registry to `~/.skillhub/config.json`. `--no-open` remains accepted for compatibility; the CLI never launches a browser automatically.
 
 Token-based login remains available for CI and other non-interactive automation. In both modes,
 credentials are persisted only after `whoami` succeeds.
@@ -287,7 +280,7 @@ DeepSeek Harness resolves project skills from the nearest Git repository root, w
 ```json
 {
   "schemaVersion": 1,
-  "registry": "https://skill.xfyun.cn",
+  "registry": "https://skillhub.example.com",
   "namespace": "global",
   "slug": "pdf-parser",
   "version": "1.0.0",
@@ -603,19 +596,7 @@ skill is finally published. Check the Web page for the final publish or review s
 
 ## ⬆️ Self-Update
 
-```bash
-# Check for new version
-skillhub update --check
-
-# Execute update
-skillhub update
-```
-
-Update mechanism:
-- Installed via npm globally: Auto-executes `npm install -g @astron-team/skillhub@latest`
-- Installed via Bun globally: Auto-executes `bun add -g @astron-team/skillhub@latest`
-- Run via npx: Prompts manual update command
-- Unknown installation method: Prompts manual update
+Automatic CLI self-update is disabled in this Fork. Use the reviewed Fork release process.
 
 ## 🔧 Environment Variables
 
@@ -655,11 +636,11 @@ Update mechanism:
 | `skillhub sync <status\|diff\|push> --namespace <slug> [options]` | Inspect or push a non-global namespace workspace |
 | `skillhub suite <install\|check\|upgrade\|remove> <coordinate> [options]` | Manage a pinned Skill Suite installation |
 | `skillhub repository <install\|check\|upgrade> <repository-id> [options]` | Manage GitHub repository skills on registries that expose a compatible installation plan |
-| `skillhub update [--check] [--json]` | Check or execute CLI self-update |
+| `skillhub update [--check] [--json]` | Disabled; use the reviewed Fork release process |
 
 ### Choosing commands and preserving compatibility
 
-- `update` updates the CLI executable; `upgrade` updates explicitly selected installed skills.
+- `update` is disabled in this Fork; `upgrade` updates explicitly selected installed skills.
   `outdated` discovers possible updates in the effective Registry without installing anything;
   `upgrade --check` previews the selected operation. Neither is a CLI self-update.
 - `repository` groups ordinary skills by their Registry repository ID. It does not clone arbitrary
@@ -712,7 +693,7 @@ request ID when asking a registry operator to investigate.
 
 ```bash
 # Check if registry is accessible
-curl 'https://skill.xfyun.cn/api/cli/v1/skills/search?q=test&limit=1'
+curl "${SKILLHUB_REGISTRY:?set a trusted registry}/api/cli/v1/skills/search?q=test&limit=1"
 
 # Use alternative registry
 skillhub search test --registry https://skillhub.example.com

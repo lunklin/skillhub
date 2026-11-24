@@ -6,12 +6,31 @@ import { RegistryAdapter, RegistryError } from '../src/host/registry-adapter.js'
 import { extractZip } from '../../../cli/src/platform/archive.ts';
 import { readBoundedResponseBody } from '../../../cli/src/platform/download.ts';
 import { snapshotSkillDirectory } from '../../../cli/src/services/skill-fingerprint.ts';
+import { isAllowedOfficialDestination } from '../../../cli/src/shared/registry-scope.ts';
 
 interface Check {
   name: string;
   required: boolean;
   outcome: 'passed' | 'failed' | 'blocked' | 'anonymous-denied' | 'public-response-unvalidated';
   reason?: string;
+}
+
+/** Follow archive redirects without ever sending credentials or leaving the selected official source. */
+async function downloadArchive(source: string, address: string, fetchImpl: typeof fetch, signal: AbortSignal): Promise<Response> {
+  const base = new URL(`${source}/`);
+  // Application-relative API routes belong beneath the selected Registry base path.
+  let target = new URL(address.startsWith('/api/') ? address.slice(1) : address, base);
+  for (let hops = 0; hops <= 5; hops++) {
+    if (!['http:', 'https:'].includes(target.protocol) || target.username || target.password) throw new Error('Invalid archive URL');
+    if (!isAllowedOfficialDestination(source, target)) throw new Error('Official archive source was not explicitly selected');
+    const response = await fetchImpl(target, { method: 'GET', credentials: 'omit', redirect: 'manual', signal });
+    if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+    const location = response.headers.get('location');
+    await response.body?.cancel().catch(() => undefined);
+    if (!location || hops === 5) throw new Error('Invalid archive redirect');
+    target = new URL(location, target);
+  }
+  throw new Error('Archive redirect limit exceeded');
 }
 
 /** Anonymous read-only contract probe; extracted packages live only in a disposable directory. */
@@ -41,9 +60,7 @@ export async function probeRegistry(options: { registry: string; namespace: stri
 
   if (resolved) {
     await check('download-archive-fingerprint', true, async signal => {
-      const url = new URL(resolved.downloadUrl, `${registry.source}/`);
-      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid archive URL');
-      const response = await fetchImpl(url, { method: 'GET', credentials: 'omit', signal });
+      const response = await downloadArchive(registry.source, resolved.downloadUrl, fetchImpl, signal);
       let directory: string | undefined;
       try {
         if (!response.ok) throw new RegistryError(response.status === 401 || response.status === 403 ? 'ANONYMOUS_DENIED' : 'HTTP_ERROR', false, response.status);

@@ -32,10 +32,9 @@ skillhub:
 
 ## Q: 如何使用 CLI 工具管理技能包？
 
-A: 优先使用第一方 CLI：
+A: 使用已审核的 CHEERY Fork CLI，并先配置可信注册中心：
 
 ```bash
-npm install -g @astron-team/skillhub
 skillhub search pdf
 ```
 

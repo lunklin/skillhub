@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { delimiter, join } from 'node:path'
 import { createTempHome } from '../helpers/temp-env'
 import { startFakeRegistry } from '../helpers/fake-registry'
 import { runCli } from '../helpers/run-cli'
@@ -100,6 +102,26 @@ describe('auth commands', () => {
     expect(await Bun.file(`${env.home}/.skillhub/credentials.json`).json())
       .toMatchObject({ tokens: { [registry.url]: 'oauth-secret' } })
     expect(registry.received.devicePolls).toBe(2)
+  })
+
+  test.skipIf(process.platform === 'win32')('device login never launches a browser, even without --no-open', async () => {
+    const env = await createTempHome()
+    registry = await startFakeRegistry({ token: 'oauth-secret', deviceFlow: { accessToken: 'oauth-secret' } })
+    const bin = join(env.cwd, 'bin')
+    const marker = join(env.cwd, 'browser-launched')
+    await mkdir(bin, { recursive: true })
+    for (const launcher of ['open', 'xdg-open']) {
+      await writeFile(join(bin, launcher), '#!/bin/sh\nprintf invoked > "$CHEERY_BROWSER_MARKER"\n', { mode: 0o755 })
+    }
+    const result = await runCli(['login', '--registry', registry.url, '--json'], {
+      HOME: env.home, USERPROFILE: env.home, PATH: [bin, process.env.PATH ?? ''].join(delimiter),
+      CI: '', SSH_CONNECTION: '', SSH_TTY: '', DISPLAY: ':0', CHEERY_BROWSER_MARKER: marker
+    })
+    expect(result.exitCode).toBe(0)
+    const event = JSON.parse(result.stderr)
+    expect(event.browserOpened).toBe(false)
+    expect(event.redirectWarning).toContain('redirect')
+    expect(await Bun.file(marker).exists()).toBe(false)
   })
 
   test('device login --json emits a non-secret authorization event and final result', async () => {

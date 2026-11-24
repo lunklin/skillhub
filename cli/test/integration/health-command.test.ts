@@ -34,6 +34,15 @@ describe('doctor --health subprocess contract', () => {
     expect(report.checks.some((check: { code: string }) => check.code === 'REGISTRY_UNRESOLVED')).toBe(true)
     expect(await readdir(f.home)).toEqual([])
   })
+  test('saved public registry is refused without connecting', async () => {
+    const f = await fixture()
+    await save(f.home, 'config', { registry: 'https://skill.xfyun.cn' })
+    const result = await runCli(['doctor', '--health', '--json'], f.env, { cwd: f.cwd })
+    expect(result.exitCode).toBe(5)
+    const report = JSON.parse(result.stdout)
+    expect(report.registry).toBeNull()
+    expect(report.checks.some((check: { message: string }) => check.message.includes('explicit authorization'))).toBe(true)
+  })
   test('offline health emits a report without creating state or making HTTP requests', async () => {
     const f = await fixture(); let calls = 0
     const url = registry(() => { calls++; return new Response('unexpected') })

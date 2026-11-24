@@ -227,8 +227,8 @@ cli
   })
 
 cli
-  .command('update', 'Check or update CLI itself')
-  .option('--check', 'Check for updates without installing')
+  .command('update', 'CLI updates and checks are disabled in this Fork')
+  .option('--check', 'Version checks are disabled; use the reviewed Fork release process')
   .option('--json', 'Output JSON')
   .action((options: { check?: boolean; json?: boolean }) => {
     return runCommand(() => updateCommand(options), Boolean(options.json))
@@ -238,7 +238,7 @@ cli
   .command('login', 'Log in with OAuth Device Flow or an API token')
   .option('--registry <url>', 'Registry URL')
   .option('--token <token>', 'API token')
-  .option('--no-open', 'Do not open the verification URL in a browser')
+  .option('--no-open', 'Retained for compatibility; verification URLs are never opened automatically')
   .option('--json', 'Output JSON')
   .action((options: { registry?: string; token?: string; open?: boolean; json?: boolean }) => {
     return runCommand(

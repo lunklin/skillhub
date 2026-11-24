@@ -16,6 +16,30 @@ try {
   const input = (index, name) => settings.getByRole('textbox', { name: `来源 ${index} ${name}`, exact: true });
   const selected = name => settings.getByRole('radio', { name, exact: true });
   const saved = () => settings.getByText('配置已保存。', { exact: true }).waitFor();
+  // Legacy official defaults require a saved, source-specific opt-in before a probe.
+  await page.evaluate(() => window.registryFixture.legacyOfficial());
+  const approval = settings.getByRole('checkbox', { name: '我明确允许连接此官方公开 Registry；保存后生效。' });
+  const connection = settings.getByRole('button', { name: '测试连接', exact: true });
+  await approval.waitFor();
+  assert.equal(await approval.isChecked(), false);
+  assert.equal(await connection.isDisabled(), true);
+  assert.equal(await page.evaluate(() => window.registryFixture.connectionTests()), 0);
+  await approval.check();
+  assert.equal(await connection.isDisabled(), true);
+  assert.equal(await page.evaluate(() => window.registryFixture.state().value.approvedOfficialRegistryUrl), '');
+  await save(); await saved();
+  assert.equal(await page.evaluate(() => window.registryFixture.state().value.approvedOfficialRegistryUrl), 'https://skill.xfyun.cn');
+  assert.equal(await connection.isDisabled(), false);
+  await connection.click();
+  await settings.getByText('连接成功 · 公开目录可用 · 0 ms', { exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => window.registryFixture.connectionTests()), 1);
+  await approval.uncheck();
+  assert.equal(await connection.isDisabled(), true);
+  await save(); await saved();
+  assert.equal(await page.evaluate(() => window.registryFixture.state().value.approvedOfficialRegistryUrl), '');
+  assert.equal(await connection.isDisabled(), true);
+  await page.evaluate(() => window.registryFixture.resetFixture());
+  await selected('选择来源 1：来源 A').waitFor();
   if (process.env.DSH_PROBE_SCREENSHOT) await page.screenshot({ path: `${process.env.DSH_PROBE_SCREENSHOT}-desktop.png`, fullPage: true });
   // Open a non-current editor, select it, then clear/retype its active address.
   await edit(2);

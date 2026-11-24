@@ -63,3 +63,101 @@ test.each(['valid', 'fingerprint-mismatch', 'unsafe-archive', 'resolve-denied', 
     } finally { await server.stop(true); }
   },
 );
+
+test.each(['absolute-official', 'redirect-official', 'private-storage'] as const)(
+  'probe rejects unapproved official archive targets and preserves private storage: %s', async scenario => {
+    const archive = zipSync({ 'SKILL.md': new TextEncoder().encode(content) });
+    let storageRequests = 0;
+    const storage = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch(request) {
+      storageRequests++;
+      expect(request.headers.get('authorization')).toBeNull();
+      expect(request.headers.get('cookie')).toBeNull();
+      return new Response(archive);
+    } });
+    let redirects = 0;
+    const registry = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch(request) {
+      expect(request.headers.get('authorization')).toBeNull();
+      expect(request.headers.get('cookie')).toBeNull();
+      const url = new URL(request.url);
+      if (url.pathname.endsWith('/search')) return Response.json({ data: { items: [], total: 0, limit: 20 } });
+      if (url.pathname.endsWith('/resolve')) return Response.json({ data: { namespace: 'team', slug: 'writer', version: '1', versionId: 7, fingerprint,
+        downloadUrl: scenario === 'absolute-official' ? 'https://SKILL.XFYUN.CN:443/private.zip' : '/redirect' } });
+      if (url.pathname === '/redirect') {
+        redirects++;
+        return new Response(null, { status: 302, headers: { location: scenario === 'redirect-official'
+          ? 'https://skill.xfyun.cn./private.zip' : `${storage.url.href}archive.zip?signature=private` } });
+      }
+      if (url.pathname.endsWith('/file')) return new Response(content);
+      if (url.pathname.endsWith('/security-audit')) return new Response('', { status: 403 });
+      if (url.pathname.endsWith('/versions') || url.pathname.endsWith('/reviews')) return Response.json({ data: { items: [], total: 0, page: 0, size: 20 } });
+      return Response.json({ data: { id: 42, namespace: 'team', slug: 'writer', displayName: null, summary: null } });
+    } });
+    let attemptedOfficial = 0;
+    const guardedFetch = Object.assign(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(input instanceof Request ? input.url : String(input));
+      if (url.hostname.replace(/\.$/u, '') === 'skill.xfyun.cn') { attemptedOfficial++; throw new Error('Unexpected official request'); }
+      if (init?.redirect !== 'manual' && init?.redirect !== 'error') throw new Error('Unsafe implicit redirect');
+      return fetch(input, init);
+    }, { preconnect: fetch.preconnect });
+    try {
+      const report = await probeRegistry({ registry: registry.url.href, namespace: 'team', slug: 'writer', version: '1' }, guardedFetch);
+      expect(report.requiredPassed).toBe(scenario === 'private-storage');
+      expect(report.checks.find(item => item.name === 'download-archive-fingerprint')?.outcome)
+        .toBe(scenario === 'private-storage' ? 'passed' : 'failed');
+      expect(attemptedOfficial).toBe(0);
+      expect(storageRequests).toBe(scenario === 'private-storage' ? 1 : 0);
+      expect(redirects).toBe(scenario === 'absolute-official' ? 0 : 1);
+      expect(JSON.stringify(report)).not.toContain('signature=private');
+    } finally { await registry.stop(true); await storage.stop(true); }
+  },
+);
+
+test('probe preserves a selected Registry base path for application-relative archive URLs', async () => {
+  const paths: string[] = [];
+  const archive = zipSync({ 'SKILL.md': new TextEncoder().encode(content) });
+  const mockFetch = Object.assign(async (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    paths.push(url.pathname);
+    expect(url.origin).toBe('https://registry.example');
+    expect(init?.redirect === 'manual' || init?.redirect === 'error').toBe(true);
+    if (url.pathname.endsWith('/search')) return Response.json({ data: { items: [], total: 0, limit: 20 } });
+    if (url.pathname.endsWith('/resolve')) return Response.json({ data: { namespace: 'team', slug: 'writer', version: '1', versionId: 7, fingerprint,
+      downloadUrl: '/api/cli/v1/skills/team/writer/versions/1/download' } });
+    if (url.pathname.endsWith('/download')) return new Response(archive);
+    if (url.pathname.endsWith('/file')) return new Response(content);
+    if (url.pathname.endsWith('/security-audit')) return new Response('', { status: 403 });
+    if (url.pathname.endsWith('/versions') || url.pathname.endsWith('/reviews')) return Response.json({ data: { items: [], total: 0, page: 0, size: 20 } });
+    return Response.json({ data: { id: 42, namespace: 'team', slug: 'writer', displayName: null, summary: null } });
+  }, { preconnect: fetch.preconnect });
+  const report = await probeRegistry({ registry: 'https://registry.example/base', namespace: 'team', slug: 'writer', version: '1' }, mockFetch);
+  expect(report.requiredPassed).toBe(true);
+  expect(paths).toContain('/base/api/cli/v1/skills/team/writer/versions/1/download');
+  expect(paths).not.toContain('/api/cli/v1/skills/team/writer/versions/1/download');
+});
+
+test.each([
+  ['https://skill.xfyun.cn/approved/%2f..%2fother', false],
+  ['https://skill.xfyun.cn/approved/%252f..%252fother', false],
+  ['https://skill.xfyun.cn/approved/%5c..%5cother', false],
+  ['https://skill.xfyun.cn/elsewhere/archive.zip', false],
+  ['https://skill.xfyun.cn:8443/approved/archive.zip', false],
+  ['https://skill.xfyun.cn/approved/assets/archive.zip', true],
+] as const)('probe enforces official base path for %s', async (archiveUrl, allowed) => {
+  const calls: string[] = [];
+  const archive = zipSync({ 'SKILL.md': new TextEncoder().encode(content) });
+  const mockFetch = Object.assign(async (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    calls.push(url.href);
+    expect(['manual', 'error'].includes(init?.redirect ?? '')).toBe(true);
+    if (url.pathname.endsWith('/search')) return Response.json({ data: { items: [], total: 0, limit: 20 } });
+    if (url.pathname.endsWith('/resolve')) return Response.json({ data: { namespace: 'team', slug: 'writer', version: '1', versionId: 7, fingerprint, downloadUrl: archiveUrl } });
+    if (url.href === archiveUrl) return new Response(archive);
+    if (url.pathname.endsWith('/file')) return new Response(content);
+    if (url.pathname.endsWith('/security-audit')) return new Response('', { status: 403 });
+    if (url.pathname.endsWith('/versions') || url.pathname.endsWith('/reviews')) return Response.json({ data: { items: [], total: 0, page: 0, size: 20 } });
+    return Response.json({ data: { id: 42, namespace: 'team', slug: 'writer', displayName: null, summary: null } });
+  }, { preconnect: fetch.preconnect });
+  const report = await probeRegistry({ registry: 'https://skill.xfyun.cn/approved', namespace: 'team', slug: 'writer', version: '1' }, mockFetch);
+  expect(report.requiredPassed).toBe(allowed);
+  expect(calls.filter(url => url === archiveUrl)).toHaveLength(allowed ? 1 : 0);
+});

@@ -12,6 +12,29 @@ const resolved = {
 };
 
 describe('anonymous Registry adapter', () => {
+  test('a private Registry redirect cannot cause an official request or send credentials', async () => {
+    let privateRequests = 0;
+    let attemptedOfficial = 0;
+    const server = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch(request) {
+      privateRequests++;
+      expect(request.headers.get('authorization')).toBeNull();
+      expect(request.headers.get('cookie')).toBeNull();
+      return new Response(null, { status: 302, headers: { location: 'https://skill.xfyun.cn/api/cli/v1/skills/search' } });
+    } });
+    const guardedFetch = Object.assign(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(input instanceof Request ? input.url : String(input));
+      if (url.hostname === 'skill.xfyun.cn') { attemptedOfficial++; throw new Error('Unexpected official request'); }
+      expect(init?.redirect).toBe('error');
+      expect(init?.credentials).toBe('omit');
+      return fetch(input, init);
+    }, { preconnect: fetch.preconnect });
+    try {
+      await expect(new RegistryAdapter(server.url.href, guardedFetch).search('private query'))
+        .rejects.toMatchObject({ code: 'NETWORK_ERROR' });
+      expect(privateRequests).toBe(1);
+      expect(attemptedOfficial).toBe(0);
+    } finally { await server.stop(true); }
+  });
   test.each(['headers', 'body'] as const)('times out stalled %s and permits a later retry', async phase => {
     let stalled = true;
     let finishHeaders: (() => void) | undefined;

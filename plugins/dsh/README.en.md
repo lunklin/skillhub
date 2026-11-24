@@ -6,7 +6,7 @@ A native DSH plugin for anonymous skill browsing, conversation search and instal
 
 Version `0.2.0` adds source-aware installation status to catalog cards and conversation results, including recorded versions, user/project scopes and abnormal records. Conversation status is a query-time snapshot. No matching record does not exclude manual or other-source installations, and file presence does not prove DSH activation. Matching uses Registry source, namespace and slug; a same-named directory from another source is not claimed.
 
-An omitted, empty or whitespace-only `registryUrl` disconnects; existing custom addresses are preserved. CLI defaults and credentials are not inherited.
+An omitted, empty or whitespace-only `registryUrl` disconnects; existing custom addresses are preserved. An official iFLYTEK URL saved by an older version remains disconnected until the user explicitly approves that exact source in settings and saves. Revocation also takes effect on save; existing configuration and installation records are not rewritten automatically. CLI defaults and credentials are not inherited.
 
 Version `0.4.0` uses the independent `dsh-v0.4.0` tag. It adds versioned examples and native composer handoff, conversational installation management, and per-location installed versions while retaining the dual-RC compatibility of `0.3.1`. Check npm for public availability; locally built tarballs can be verified independently as described below.
 
@@ -161,6 +161,7 @@ Switching preserves existing installations. Installed skills from other trusted 
 | Field | Meaning |
 | --- | --- |
 | `registryUrl` | Registry base URL; defaults to disconnected; explicit empty/whitespace disconnects without fallback; custom values are preserved |
+| `approvedOfficialRegistryUrl` | Explicitly approved official Registry URL; empty means no approval. Consent is bound to the selected scheme, port and path |
 | `savedRegistries` | Optional named sources `[{ name, url }]`; defaults to an empty list. `registryUrl` remains the sole active source |
 | `detailTabs.versions` | Version history visibility |
 | `detailTabs.securityAudit` | Security audit visibility |
