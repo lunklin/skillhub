@@ -30,6 +30,7 @@ export interface HostInstallRequest {
 
 export interface SkillHubConfig {
   registryUrl: string;
+  approvedOfficialRegistryUrl?: string;
   savedRegistries?: { name: string; url: string }[];
   detailTabs: { versions: TabMode; securityAudit: TabMode; reviews: TabMode };
 }
@@ -38,6 +39,7 @@ export interface CatalogContext {
   sourceRevision: string;
   registryUrl: string;
   configured: boolean;
+  blockedReason?: 'OFFICIAL_REGISTRY_NOT_APPROVED';
   detailTabs: { versions: TabMode; securityAudit: TabMode; reviews: TabMode };
 }
 

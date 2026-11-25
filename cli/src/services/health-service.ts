@@ -1,3 +1,4 @@
+import { CliError } from '../shared/errors'
 import { lstat, readFile, realpath } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
 import { SkillHubClient } from '../clients/skillhub-client'
@@ -92,16 +93,18 @@ export async function runHealth(options: HealthOptions, dependencies: HealthDepe
     const saved = credentials.value?.tokens as Record<string, string> | undefined
     if (saved) secrets.push(...Object.values(saved).filter(Boolean))
     if (!config.failed || options.registry || env.SKILLHUB_REGISTRY) {
-      const registry = resolveRegistry(options, env, config.value ?? {})
       try {
+        const registry = resolveRegistry(options, env, config.value ?? {})
         const url = new URL(registry)
         if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash
           || [...registry].some(char => char.charCodeAt(0) <= 32 || char.charCodeAt(0) === 127)) throw new Error('Unsafe registry')
         report.registry = registry
         report.registrySource = options.registry ? 'argument' : env.SKILLHUB_REGISTRY ? 'environment' : config.value?.registry ? 'config' : 'default'
         add('registry', 'pass', 'REGISTRY_SELECTED', 'The registry was resolved using the normal CLI precedence.')
-      } catch {
-        add('registry', 'fail', 'INVALID_REGISTRY', 'Registry must be an HTTP(S) URL without credentials, query or fragment.', EXIT.generic, 'Check the registry address; unsafe input was not displayed or contacted.')
+      } catch (error) {
+        if (error instanceof CliError) {
+          add('registry', 'fail', 'REGISTRY_UNRESOLVED', error.message, EXIT.usage)
+        } else add('registry', 'fail', 'INVALID_REGISTRY', 'Registry must be an HTTP(S) URL without credentials, query or fragment.', EXIT.generic, 'Check the registry address; unsafe input was not displayed or contacted.')
       }
     } else {
       add('registry', 'skipped', 'REGISTRY_UNRESOLVED', 'Configuration failed; no default registry will be contacted.')
@@ -155,7 +158,7 @@ export async function runHealth(options: HealthOptions, dependencies: HealthDepe
       report.checks.push(...await inspectRegistry(report.registry, token, report.credentialSource, dependencies))
     }
   }
-  report.exitCode = [EXIT.filesystem, EXIT.auth, EXIT.network, EXIT.generic]
+  report.exitCode = [EXIT.filesystem, EXIT.auth, EXIT.network, EXIT.usage, EXIT.generic]
     .find(code => report.checks.some(check => check.status === 'fail' && check.exitCode === code)) ?? 0
   report.ok = report.exitCode === 0
   // Redact known credentials even if they occur inside a configured path or URL.

@@ -10,6 +10,7 @@ let snapshot: ConfigFormSnapshot<SkillHubConfig> = { status: 'ready', revision: 
 } };
 const listeners = new Set<() => void>();
 const writes: { revision: number | undefined; paths: string[][] }[] = [];
+let connectionTests = 0;
 let releaseWrite: (() => void) | undefined;
 let holdWrites = false;
 const notify = () => listeners.forEach(listener => listener());
@@ -25,6 +26,7 @@ const form: ConfigForm<SkillHubConfig> = {
       if (operation.op !== 'set') throw new Error('unexpected operation');
       const path = operation.path.map(String);
       if (path.length === 1 && path[0] === 'registryUrl') value.registryUrl = String(operation.value);
+      else if (path.length === 1 && path[0] === 'approvedOfficialRegistryUrl') value.approvedOfficialRegistryUrl = String(operation.value);
       else if (path.length === 1 && path[0] === 'savedRegistries') value.savedRegistries = operation.value as SkillHubConfig['savedRegistries'];
       else if (path[0] === 'detailTabs') Object.assign(value.detailTabs, { [path[1]!]: operation.value });
       else throw new Error('unexpected field');
@@ -38,6 +40,12 @@ Object.assign(window, { registryFixture: {
   releaseWrite: () => { holdWrites = false; releaseWrite?.(); },
   state: () => snapshot,
   writes: () => writes,
+  connectionTests: () => connectionTests,
+  legacyOfficial: () => { snapshot = { ...snapshot, revision: snapshot.revision! + 1, value: { ...snapshot.value!, registryUrl: 'https://skill.xfyun.cn', approvedOfficialRegistryUrl: '', savedRegistries: [] } }; notify(); },
+  resetFixture: () => { snapshot = { status: 'ready', revision: snapshot.revision! + 1, writable: true, base: {}, user: {}, value: {
+    registryUrl: 'https://a.example', savedRegistries: [{ name: '来源 A', url: 'https://a.example' }, { name: '来源 B', url: 'https://b.example' }],
+    detailTabs: { versions: 'auto', reviews: 'auto', securityAudit: 'auto' },
+  } }; notify(); },
   replaceSources: () => { snapshot = { ...snapshot, revision: snapshot.revision! + 1, value: { ...snapshot.value!, registryUrl: 'https://b.example', savedRegistries: [{ name: '替换来源', url: 'https://replacement.example' }, { name: '来源 B', url: 'https://b.example' }] } }; notify(); },
   legacyCurrent: () => { snapshot = { ...snapshot, revision: snapshot.revision! + 1, value: { ...snapshot.value!, registryUrl: 'https://legacy.example', savedRegistries: [{ name: '来源 A', url: 'https://a.example' }, { name: '来源 B', url: 'https://b.example' }] } }; notify(); },
   readonly: () => { snapshot = { ...snapshot, writable: false }; notify(); },
@@ -45,5 +53,5 @@ Object.assign(window, { registryFixture: {
   externalSource: () => { snapshot = { ...snapshot, revision: snapshot.revision! + 1, value: { ...snapshot.value!, registryUrl: snapshot.value!.savedRegistries![1]!.url } }; notify(); },
 } });
 createRoot(document.getElementById('root')!).render(<main className="skillhub-controls"><NativeControlStyles />
-  <ConfigPage form={form} testConnection={async () => { throw new Error('not exercised'); }} />
+  <ConfigPage form={form} testConnection={async () => { connectionTests++; return { ok: true, value: { reachable: true, mode: 'paged', elapsedMs: 0 } }; }} />
 </main>);

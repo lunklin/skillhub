@@ -106,7 +106,7 @@ describe('remove command — flag validation (P0)', () => {
     const env = await createTempHome()
     // Bun.spawn with piped stdin is never a TTY — this exercises the non-interactive guard.
     const result = await runCli(
-      ['remove', 'my-skill', '--remote'],
+      ['remove', 'my-skill', '--remote', '--registry', 'http://127.0.0.1:1234'],
       { HOME: env.home, USERPROFILE: env.home }
     )
 

@@ -15,7 +15,7 @@ describe('whoami command', () => {
     const { home } = await createTempHome()
     const env = { HOME: home, USERPROFILE: home }
 
-    const result = await runCli(['whoami'], env)
+    const result = await runCli(['whoami', '--registry', 'http://127.0.0.1:1234'], env)
 
     expect(result.exitCode).toBe(2)
     expect(result.stderr).toContain('not logged in')

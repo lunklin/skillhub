@@ -227,8 +227,8 @@ cli
   })
 
 cli
-  .command('update', 'Check or update CLI itself')
-  .option('--check', 'Check for updates without installing')
+  .command('update', 'CLI updates and version checks are disabled in this Fork')
+  .option('--check', 'Version checks are disabled; use the reviewed Fork release process')
   .option('--json', 'Output JSON')
   .action((options: { check?: boolean; json?: boolean }) => {
     return runCommand(() => updateCommand(options), Boolean(options.json))
@@ -238,7 +238,7 @@ cli
   .command('login', 'Log in with OAuth Device Flow or an API token')
   .option('--registry <url>', 'Registry URL')
   .option('--token <token>', 'API token')
-  .option('--no-open', 'Do not open the verification URL in a browser')
+  .option('--no-open', 'Retained for compatibility; verification URLs are never opened automatically')
   .option('--json', 'Output JSON')
   .action((options: { registry?: string; token?: string; open?: boolean; json?: boolean }) => {
     return runCommand(
@@ -369,7 +369,7 @@ cli
   .option('--force', 'Overwrite local changes')
   .option('--all', 'Push every skill directory in the workspace')
   .option('--visibility <v>', 'Visibility (public|namespace-only|private)', { default: 'namespace-only' })
-  .option('--dry-run', 'Validate without uploading')
+  .option('--dry-run', 'Upload packages to the registry for validation without publishing')
   .option('--submit-review', 'Submit an uploaded version for review when required')
   .option('--registry <url>', 'Registry URL')
   .option('--token <token>', 'API token')
@@ -457,7 +457,7 @@ cli
   .command('publish <path>', 'Publish a local skill package')
   .option('--namespace <slug>', 'Namespace')
   .option('--visibility <v>', 'Visibility (public|namespace-only|private)')
-  .option('--dry-run', 'Validate without publishing')
+  .option('--dry-run', 'Upload the ZIP to the registry for validation without publishing')
   .option('--registry <url>', 'Registry URL')
   .option('--token <token>', 'API token')
   .option('--json', 'Output JSON')

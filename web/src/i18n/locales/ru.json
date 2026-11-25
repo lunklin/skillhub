@@ -212,8 +212,8 @@
         "cli": "CLI"
       },
       "cli": {
-        "description": "Установите SkillHub CLI локально, чтобы выполнять skillhub install для скиллов.",
-        "command": "npm i -g @astron-team/skillhub"
+        "description": "Используйте проверенную CLI-сборку CHEERY Fork и проверьте её версию перед установкой.",
+        "command": "skillhub version"
       },
       "agent": {
         "description": "Отправьте промпт своему Agent, чтобы настроить SkillHub Registry",
@@ -222,8 +222,8 @@
       },
       "human": {
         "description": "Используйте SkillHub CLI для поиска и установки Skills",
-        "command": "npx @astron-team/skillhub@latest search <keyword> --registry https://www.example.com",
-        "commandTemplate": "npx @astron-team/skillhub@latest search <keyword> --registry {{url}}"
+        "command": "skillhub search <keyword> --registry https://www.example.com",
+        "commandTemplate": "skillhub search <keyword> --registry {{url}}"
       },
       "steps": {
         "configureEnv": {

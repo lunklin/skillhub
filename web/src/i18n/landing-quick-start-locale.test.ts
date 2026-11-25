@@ -40,21 +40,18 @@ describe('landing quick start locales', () => {
 
   it('keeps the native CLI guide bound to the selected registry', () => {
     expect(skillGuideTemplate).toContain('name: skillhub-cli')
-    expect(skillGuideTemplate).toContain('version: 2.0.2')
-    expect(skillGuideTemplate).toContain('npm install --global @astron-team/skillhub')
-    expect(skillGuideTemplate).not.toContain('@astron-team/skillhub@0.1.12')
+    expect(skillGuideTemplate).toContain('version: 2.0.3-cheery.1')
+    expect(skillGuideTemplate).toContain('reviewed CHEERY Fork build')
     expect(skillGuideTemplate).toContain('the `registry` field in `~/.skillhub/config.json`')
-    expect(skillGuideTemplate).toContain('`https://skill.xfyun.cn`')
+    expect(skillGuideTemplate).toContain('if no registry is configured, stop')
+    expect(skillGuideTemplate).toContain('Never turn an inherited public URL into an explicit `--registry` argument')
+    expect(skillGuideTemplate).not.toContain('https://skill.xfyun.cn')
+    expect(skillGuideTemplate).toContain('Do not install or update a CLI automatically')
     expect(skillGuideTemplate).not.toContain('${SKILLHUB_PUBLIC_BASE_URL}')
-    expect(skillGuideTemplate).toContain('separately confirms removal of that exact identified launcher')
-    expect(skillGuideTemplate).toContain('Never unlink an executable directly')
-    expect(skillGuideTemplate).toContain('do not run the global installation or update yet')
-    expect(skillGuideTemplate).toContain('resolved package metadata proves')
-    expect(skillGuideTemplate).toContain('even when it prints `SkillHub CLI <version>`')
-    expect(skillGuideTemplate).toContain('does not authorize removing another `skillhub` launcher')
     expect(skillGuideTemplate).toContain('Treat `<registry>` below as a value to replace')
     expect(skillGuideTemplate).toContain([
       'skillhub install @global/skillhub-cli \\',
+      '  --version 2.0.3-cheery.1 \\',
       '  --scope user',
     ].join('\n'))
     expect(skillGuideTemplate).toContain('PowerShell 7')
@@ -64,10 +61,10 @@ describe('landing quick start locales', () => {
 
   it('exposes CLI install command in both locales', () => {
     expect(zh.landing.quickStart.tabs.cli).toBe('CLI')
-    expect(zh.landing.quickStart.cli.command).toBe('npm i -g @astron-team/skillhub')
-    expect(zh.landing.quickStart.cli.description).toBe('安装 SkillHub CLI 到本地，后续可运行 skillhub install 安装技能')
+    expect(zh.landing.quickStart.cli.command).toBe('skillhub version')
+    expect(zh.landing.quickStart.cli.description).toBe('先使用已審核的 CHEERY Fork CLI；確認版本後可安裝技能')
     expect(en.landing.quickStart.tabs.cli).toBe('CLI')
-    expect(en.landing.quickStart.cli.command).toBe('npm i -g @astron-team/skillhub')
-    expect(en.landing.quickStart.cli.description).toBe('Install the SkillHub CLI locally to run skillhub install for skills.')
+    expect(en.landing.quickStart.cli.command).toBe('skillhub version')
+    expect(en.landing.quickStart.cli.description).toBe('Use a reviewed CHEERY Fork CLI and check its version before installing skills.')
   })
 })

@@ -2,7 +2,6 @@ import { ConfigStore } from '../stores/config-store'
 import { CredentialsStore } from '../stores/credentials-store'
 import { AuthService } from '../services/auth-service'
 import { resolveRegistry, resolveToken } from '../services/registry-service'
-import { openExternalUrl } from '../platform/browser'
 
 export interface LoginCommandOptions {
   registry?: string
@@ -20,13 +19,14 @@ export async function loginCommand(options: LoginCommandOptions): Promise<string
   const result = token
     ? await authService.login(registry, token)
     : await authService.loginWithDeviceFlow(registry, async details => {
-        const opened = options.noOpen ? false : openExternalUrl(details.verificationUri)
+        const redirectWarning = 'Verify the destination before opening; the page may redirect to an external site.'
         const message = options.json
-          ? JSON.stringify({ event: 'device_authorization', ...details, browserOpened: opened })
+          ? JSON.stringify({ event: 'device_authorization', ...details, browserOpened: false, redirectWarning })
           : [
               `Authorize this device at: ${details.verificationUri}`,
               `Code: ${details.userCode}`,
-              opened ? 'Browser launch requested. If no browser opened, use the URL above.' : 'Open the URL in a browser to continue.',
+              redirectWarning,
+              'Open the URL manually in a browser to continue.',
               `Waiting for authorization (expires in ${details.expiresIn}s)...`
             ].join('\n')
         process.stderr.write(`${message}\n`)

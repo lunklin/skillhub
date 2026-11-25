@@ -2,6 +2,7 @@ import { CliError } from '../shared/errors'
 import { EXIT } from '../shared/constants'
 import { z } from 'zod'
 import type { GithubSource } from '../shared/github-source'
+import { isAllowedOfficialDestination, isWithinRegistryScope } from '../services/registry-service'
 
 const repositoryInstallPlanSchema = z.object({
   repositoryId: z.string().regex(/^[1-9]\d*$/),
@@ -242,8 +243,9 @@ export class SkillHubClient {
   async serverMetadata(): Promise<ServerMetadata> {
     let response: Response
     try {
-      response = await this.fetchImpl(`${this.registry}/.well-known/clawhub.json`)
-    } catch {
+      response = await this.fetchSafe(`${this.registry}/.well-known/clawhub.json`)
+    } catch (error) {
+      if (error instanceof CliError) throw error
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
     if (!response.ok) return {}
@@ -268,11 +270,12 @@ export class SkillHubClient {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       let response: Response
       try {
-        response = await this.fetchImpl(url, {
+        response = await this.fetchSafe(url, {
           method: 'POST',
           headers: { ...this.headers(), ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) }
         })
-      } catch {
+      } catch (error) {
+        if (error instanceof CliError) throw error
         if (attempt === 0) continue
         throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
       }
@@ -292,11 +295,12 @@ export class SkillHubClient {
     const params = version ? `?version=${encodeURIComponent(version)}` : ''
     let response: Response
     try {
-      response = await this.fetchImpl(
+      response = await this.fetchSafe(
         `${this.registry}/api/v1/suites/${encodeURIComponent(namespace)}/${encodeURIComponent(slug)}${params}`,
         { headers: this.headers() }
       )
-    } catch {
+    } catch (error) {
+      if (error instanceof CliError) throw error
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
     if (response.status === 404) {
@@ -315,11 +319,12 @@ export class SkillHubClient {
       const registryBase = `${this.registry.replace(/\/+$/, '')}/`
       const url = new URL(relativeUrl, registryBase)
       const registryApi = new URL('api/', registryBase)
-      const headers = url.origin === registryApi.origin && url.pathname.startsWith(registryApi.pathname)
+      const headers = isWithinRegistryScope(registryApi.href, url) && url.pathname.startsWith(registryApi.pathname)
         ? this.headers()
         : {}
-      response = await this.fetchImpl(url.toString(), { headers })
-    } catch {
+      response = await this.fetchSafe(url.toString(), { headers }, true)
+    } catch (error) {
+      if (error instanceof CliError) throw error
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
     if (!response.ok) throw await this.createResponseError(response, 'download')
@@ -353,8 +358,9 @@ export class SkillHubClient {
     const url = await this.downloadUrl(namespace, slug, version)
     let response: Response
     try {
-      response = await this.fetchImpl(url, { headers: this.headers() })
-    } catch {
+      response = await this.fetchSafe(url, { headers: this.headers() }, true)
+    } catch (error) {
+      if (error instanceof CliError) throw error
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
     if (!response.ok) {
@@ -380,12 +386,13 @@ export class SkillHubClient {
     if (rejectExistingVersion) formData.append('rejectExistingVersion', 'true')
     let response: Response
     try {
-      response = await this.fetchImpl(`${this.registry}/api/cli/v1/skills/${namespace}/publish`, {
+      response = await this.fetchSafe(`${this.registry}/api/cli/v1/skills/${namespace}/publish`, {
         method: 'POST',
         headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
         body: formData
       })
-    } catch {
+    } catch (error) {
+      if (error instanceof CliError) throw error
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
     return this.handleJsonResponse<PublishResponse>(response)
@@ -404,12 +411,13 @@ export class SkillHubClient {
     if (rejectExistingVersion) formData.append('rejectExistingVersion', 'true')
     let response: Response
     try {
-      response = await this.fetchImpl(`${this.registry}/api/cli/v1/skills/${namespace}/publish/validate`, {
+      response = await this.fetchSafe(`${this.registry}/api/cli/v1/skills/${namespace}/publish/validate`, {
         method: 'POST',
         headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
         body: formData
       })
-    } catch {
+    } catch (error) {
+      if (error instanceof CliError) throw error
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
     return this.handleJsonResponse<DryRunResponse>(response)
@@ -423,7 +431,7 @@ export class SkillHubClient {
   ): Promise<SubmitReviewResponse> {
     let response: Response
     try {
-      response = await this.fetchImpl(
+      response = await this.fetchSafe(
         `${this.registry}/api/v1/skills/${encodeURIComponent(namespace)}/${encodeURIComponent(slug)}/submit-review`,
         {
           method: 'POST',
@@ -431,7 +439,8 @@ export class SkillHubClient {
           body: JSON.stringify({ version, targetVisibility })
         }
       )
-    } catch {
+    } catch (error) {
+      if (error instanceof CliError) throw error
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
     return this.handleJsonResponse<SubmitReviewResponse>(response)
@@ -443,10 +452,11 @@ export class SkillHubClient {
 
   private async getResponse(path: string): Promise<Response> {
     try {
-      return await this.fetchImpl(`${this.registry}/api/cli/v1${path}`, {
+      return await this.fetchSafe(`${this.registry}/api/cli/v1${path}`, {
         headers: this.headers()
       })
-    } catch (err) {
+    } catch (error) {
+      if (error instanceof CliError) throw error
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
   }
@@ -454,12 +464,13 @@ export class SkillHubClient {
   private async postPublicJson<T>(path: string, body?: Record<string, unknown>): Promise<T> {
     let response: Response
     try {
-      response = await this.fetchImpl(`${this.registry}${path}`, {
+      response = await this.fetchSafe(`${this.registry}${path}`, {
         method: 'POST',
         headers: body ? { 'Content-Type': 'application/json' } : {},
         ...(body ? { body: JSON.stringify(body) } : {})
       })
-    } catch {
+    } catch (error) {
+      if (error instanceof CliError) throw error
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
     return this.handleJsonResponse<T>(response)
@@ -537,6 +548,43 @@ export class SkillHubClient {
     }
   }
 
+  private async fetchSafe(input: string, init: RequestInit = {}, followDownloadRedirects = false): Promise<Response> {
+    let target = new URL(input)
+    const registryBase = new URL(`${this.registry.replace(/\/+$/, '')}/`)
+    const registryApi = new URL('api/', registryBase)
+    const suppliedHeaders = new Headers(init.headers)
+    let tokenAllowed = suppliedHeaders.has('Authorization')
+
+    for (let hop = 0; hop <= 5; hop += 1) {
+      if (!['http:', 'https:'].includes(target.protocol) || target.username || target.password) {
+        throw new CliError('unsupported request URL', EXIT.validation)
+      }
+      if (!isAllowedOfficialDestination(this.registry, target)) {
+        throw new CliError('public registry destination blocked; select it explicitly before connecting', EXIT.usage)
+      }
+      const hopHeaders = new Headers(suppliedHeaders)
+      if (!tokenAllowed || !isWithinRegistryScope(registryApi.href, target) || !target.pathname.startsWith(registryApi.pathname)) {
+        tokenAllowed = false
+        hopHeaders.delete('Authorization')
+      }
+      const response = await this.fetchImpl(target.toString(), {
+        ...init, headers: hopHeaders, redirect: 'manual'
+      })
+      if (![301, 302, 303, 307, 308].includes(response.status)) return response
+      const location = response.headers.get('location')
+      if (!location) return response
+      if (hop === 5) throw new CliError('too many download redirects', EXIT.network)
+      const next = new URL(location, target)
+      if (!followDownloadRedirects && (!['GET', 'HEAD'].includes((init.method ?? 'GET').toUpperCase())
+        || !isWithinRegistryScope(this.registry, next))) {
+        throw new CliError('registry redirect refused; target is outside its authorized scope or request cannot be safely replayed', EXIT.generic)
+      }
+      await response.body?.cancel().catch(() => {})
+      target = next
+    }
+    throw new CliError('too many download redirects', EXIT.network)
+  }
+
   private headers(): HeadersInit {
     return this.token ? { Authorization: `Bearer ${this.token}` } : {}
   }
@@ -544,11 +592,12 @@ export class SkillHubClient {
   private async deleteJson<T>(path: string): Promise<T> {
     let response: Response
     try {
-      response = await this.fetchImpl(`${this.registry}/api/cli/v1${path}`, {
+      response = await this.fetchSafe(`${this.registry}/api/cli/v1${path}`, {
         method: 'DELETE',
         headers: this.headers()
       })
-    } catch {
+    } catch (error) {
+      if (error instanceof CliError) throw error
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
     return this.handleJsonResponse<T>(response)

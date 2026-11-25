@@ -32,10 +32,9 @@ Also check proxy body and Scanner upload limits; multipart settings alone do not
 
 ## Q: How do I use the CLI tool to manage skill packages?
 
-A: Use the first-party CLI:
+A: Use a reviewed CHEERY Fork CLI and configure a trusted registry:
 
 ```bash
-npm install -g @astron-team/skillhub
 skillhub search pdf
 ```
 

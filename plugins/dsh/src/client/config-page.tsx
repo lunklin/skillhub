@@ -7,6 +7,7 @@ import { NativeControlStyles } from './native-control-styles.js';
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client';
 import type { RegistryConnectionTest, SkillHubConfig, TabMode } from '../host/types.js';
+import { isApprovedOfficialRegistry, isOfficialRegistry } from '../host/registry-approval.js';
 
 const modules = [
   ['versions', '版本', '查看发布版本、更新说明及可下载状态。'],
@@ -37,6 +38,10 @@ export function ConfigPage({ form, testConnection }: { form: ConfigForm<SkillHub
   }, [state.revision, draft]);
   const value = draft?.value ?? state.value;
   const registryUrl = value?.registryUrl.trim() ?? '';
+  const official = isOfficialRegistry(registryUrl);
+  const officialApproved = isApprovedOfficialRegistry(registryUrl, value?.approvedOfficialRegistryUrl);
+  const officialApprovalSaved = isApprovedOfficialRegistry(registryUrl, state.value?.approvedOfficialRegistryUrl)
+    && sameRegistry(registryUrl, state.value?.registryUrl);
   const request = useRef<AbortController>();
   const [connection, setConnection] = useState<{ url: string; pending: boolean; passed?: boolean; message: string }>();
   useEffect(() => {
@@ -44,7 +49,7 @@ export function ConfigPage({ form, testConnection }: { form: ConfigForm<SkillHub
     request.current = undefined;
     setConnection(undefined);
     return () => { request.current?.abort(); };
-  }, [registryUrl]);
+  }, [registryUrl, officialApproved]);
 
   async function test() {
     if (!registryUrl || request.current) return;
@@ -79,6 +84,7 @@ export function ConfigPage({ form, testConnection }: { form: ConfigForm<SkillHub
     if (state.revision === undefined) return;
     const current = state.value;
     const unchanged = current && next.registryUrl === current.registryUrl
+      && (next.approvedOfficialRegistryUrl ?? '') === (current.approvedOfficialRegistryUrl ?? '')
       && modules.every(([key]) => next.detailTabs[key] === current.detailTabs[key])
       && (next.savedRegistries?.length ?? 0) === (current.savedRegistries?.length ?? 0)
       && (next.savedRegistries ?? []).every((entry, index) => entry.name === current.savedRegistries?.[index]?.name && entry.url === current.savedRegistries?.[index]?.url);
@@ -113,6 +119,8 @@ export function ConfigPage({ form, testConnection }: { form: ConfigForm<SkillHub
       const accepted = await form.mutate([
         { op: 'set', path: ['registryUrl'], value: validated.registryUrl },
         { op: 'set', path: ['savedRegistries'], value: validated.savedRegistries },
+        ...((validated.approvedOfficialRegistryUrl ?? '') !== (state.value?.approvedOfficialRegistryUrl ?? '')
+          ? [{ op: 'set' as const, path: ['approvedOfficialRegistryUrl'], value: validated.approvedOfficialRegistryUrl ?? '' }] : []),
         ...modules.map(([key]) => ({ op: 'set' as const, path: ['detailTabs', key], value: draft.value.detailTabs[key] })),
       ], draft.revision);
       if (accepted) {
@@ -176,8 +184,12 @@ export function ConfigPage({ form, testConnection }: { form: ConfigForm<SkillHub
             {!registryUrl && <span className="astron-sh-config-state">{state.value?.registryUrl.trim() ? '待保存' : '当前使用'}</span>}
           </label>
         </div>
+        {official && <label className="astron-sh-source-disconnect"><input type="checkbox" checked={officialApproved}
+          onChange={event => change({ ...value, approvedOfficialRegistryUrl: event.target.checked ? registryUrl : '' })} />
+          <span>我明确允许连接此官方公开 Registry；保存后生效。</span></label>}
+        {official && !officialApprovalSaved && <p role="status">此官方来源尚未获授权；连接前请确认并保存，或选择其他来源。</p>}
         <div className="astron-sh-source-footer"><p className="astron-sh-config-help">切换或移除来源不会删除已安装技能。</p>
-          {registryUrl && <Button size="sm" variant="outline" disabled={visibleConnection?.pending} onClick={() => void test()}><Icon name="refresh" />{visibleConnection?.pending ? '测试中…' : '测试连接'}</Button>}
+          {registryUrl && <Button size="sm" variant="outline" disabled={visibleConnection?.pending || (official && (!officialApprovalSaved || !officialApproved))} onClick={() => void test()}><Icon name="refresh" />{visibleConnection?.pending ? '测试中…' : '测试连接'}</Button>}
         </div>
         {visibleConnection && <p className="astron-sh-config-connection-result" role="status" aria-live="polite" data-passed={visibleConnection.passed}>{visibleConnection.message}</p>}
         </CardContent></Card></TabsContent>

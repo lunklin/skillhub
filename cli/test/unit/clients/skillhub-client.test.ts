@@ -47,6 +47,202 @@ describe('SkillHubClient', () => {
     expect(requests).toEqual([{ url: new URL(downloadUrl, registry).toString(), authorization: null }])
   })
 
+  test.each(['https://skill.xfyun.cn/pkg.zip', 'https://SKILL.XFYUN.CN.:8443/pkg.zip'])('blocks a direct official download from a private registry: %s', async downloadUrl => {
+    let calls = 0
+    const fetchImpl = (async () => { calls++; return new Response('unexpected') }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://registry.test', 'token', fetchImpl)
+    await expect(client.downloadFromUrl(downloadUrl)).rejects.toThrow('public registry destination blocked')
+    expect(calls).toBe(0)
+  })
+
+  test('checks every download redirect hop and never sends the token to external storage', async () => {
+    const calls: Array<{ url: string; authorization: string | null }> = []
+    const fetchImpl = (async (input: URL | RequestInfo, init?: RequestInit) => {
+      const url = String(input)
+      calls.push({ url, authorization: new Headers(init?.headers).get('Authorization') })
+      expect(init?.redirect).toBe('manual')
+      if (calls.length === 1) return new Response(null, { status: 302, headers: { Location: 'https://storage.example/archive' } })
+      return new Response(null, { status: 302, headers: { Location: 'https://SKILL.XFYUN.CN.:8443/archive' } })
+    }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://registry.test', 'secret-token', fetchImpl)
+    await expect(client.downloadFromUrl('/api/skill')).rejects.toThrow('public registry destination blocked')
+    expect(calls).toEqual([
+      { url: 'https://registry.test/api/skill', authorization: 'Bearer secret-token' },
+      { url: 'https://storage.example/archive', authorization: null }
+    ])
+  })
+
+  test('permits a private Registry to redirect downloads to S3 without credentials', async () => {
+    const calls: Array<string | null> = []
+    const fetchImpl = (async (_input: URL | RequestInfo, init?: RequestInit) => {
+      calls.push(new Headers(init?.headers).get('Authorization'))
+      return calls.length === 1
+        ? new Response(null, { status: 302, headers: { Location: 'https://storage.example/file.zip?sig=test' } })
+        : new Response('package-bytes')
+    }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://registry.test', 'secret-token', fetchImpl)
+    expect(await (await client.download('team', 'demo')).text()).toBe('package-bytes')
+    expect(calls).toEqual(['Bearer secret-token', null])
+  })
+
+  test.each([
+    'https://registry.test/approved/api/%2f..%2foutside',
+    'https://registry.test/approved/api/%252f..%252foutside',
+    'https://registry.test/approved/api/%5c..%5coutside'
+  ])('never forwards bearer credentials to an encoded traversal download: %s', async target => {
+    const calls: Array<string | null> = []
+    const fetchImpl = (async (_input: URL | RequestInfo, init?: RequestInit) => {
+      calls.push(new Headers(init?.headers).get('Authorization'))
+      return new Response('package-bytes')
+    }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://registry.test/approved', 'secret-token', fetchImpl)
+    expect(await (await client.downloadFromUrl(target)).text()).toBe('package-bytes')
+    expect(calls).toEqual([null])
+  })
+
+  test.each([
+    'https://registry.test/approved/api/%2f..%2foutside',
+    'https://registry.test/approved/api/%252f..%252foutside'
+  ])('strips bearer credentials before following an encoded traversal redirect: %s', async target => {
+    const calls: Array<string | null> = []
+    const fetchImpl = (async (_input: URL | RequestInfo, init?: RequestInit) => {
+      calls.push(new Headers(init?.headers).get('Authorization'))
+      if (calls.length === 1) return new Response(null, { status: 302, headers: { Location: target } })
+      return new Response('package-bytes')
+    }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://registry.test/approved', 'secret-token', fetchImpl)
+    expect(await (await client.downloadFromUrl('/api/start')).text()).toBe('package-bytes')
+    expect(calls).toEqual(['Bearer secret-token', null])
+  })
+
+  test('does not restore bearer credentials after an encoded traversal redirects back to the API', async () => {
+    const calls: Array<string | null> = []
+    const fetchImpl = (async (_input: URL | RequestInfo, init?: RequestInit) => {
+      calls.push(new Headers(init?.headers).get('Authorization'))
+      if (calls.length === 1) return new Response(null, { status: 302, headers: { Location: '/approved/api/%2f..%2foutside' } })
+      if (calls.length === 2) return new Response(null, { status: 302, headers: { Location: '/approved/api/again' } })
+      return new Response('package-bytes')
+    }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://registry.test/approved', 'secret-token', fetchImpl)
+    expect(await (await client.downloadFromUrl('/api/start')).text()).toBe('package-bytes')
+    expect(calls).toEqual(['Bearer secret-token', null, null])
+  })
+
+  test('does not restore registry credentials after a redirect leaves the trusted API', async () => {
+    const calls: Array<string | null> = []
+    const fetchImpl = (async (_input: URL | RequestInfo, init?: RequestInit) => {
+      calls.push(new Headers(init?.headers).get('Authorization'))
+      if (calls.length === 1) return new Response(null, { status: 302, headers: { Location: 'https://storage.example/file' } })
+      if (calls.length === 2) return new Response(null, { status: 302, headers: { Location: 'https://registry.test/api/other' } })
+      return new Response('package-bytes')
+    }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://registry.test', 'secret-token', fetchImpl)
+    expect(await (await client.downloadFromUrl('/api/start')).text()).toBe('package-bytes')
+    expect(calls).toEqual(['Bearer secret-token', null, null])
+  })
+
+  test('does not follow API redirects or forward tokens to another host', async () => {
+    const calls: string[] = []
+    const fetchImpl = (async (input: URL | RequestInfo, init?: RequestInit) => {
+      calls.push(String(input))
+      expect(init?.redirect).toBe('manual')
+      return new Response(null, { status: 302, headers: { Location: 'https://skill.xfyun.cn/' } })
+    }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://registry.test', 'secret-token', fetchImpl)
+    await expect(client.search('test', 1)).rejects.toThrow()
+    expect(calls).toHaveLength(1)
+  })
+
+  test('allows a client whose selected Registry is the official host', async () => {
+    let calls = 0
+    const fetchImpl = (async (_input: URL | RequestInfo, init?: RequestInit) => {
+      calls++
+      expect(init?.redirect).toBe('manual')
+      return new Response('package-bytes')
+    }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://skill.xfyun.cn', undefined, fetchImpl)
+    expect(await (await client.downloadFromUrl('/api/skill')).text()).toBe('package-bytes')
+    expect(calls).toBe(1)
+  })
+
+  test.each([
+    'http://skill.xfyun.cn/approved/file',
+    'https://skill.xfyun.cn:8443/approved/file',
+    'https://skill.xfyun.cn/other/file',
+    'https://skill.xfyun.cn/approved-elsewhere/file',
+    'https://skill.xfyun.cn/approved/%2f..%2fother'
+  ])('blocks an official destination outside the specifically authorized origin and base path: %s', async target => {
+    let calls = 0
+    const fetchImpl = (async () => { calls++; return new Response('unexpected') }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://skill.xfyun.cn/approved', 'token', fetchImpl)
+    await expect(client.downloadFromUrl(target)).rejects.toThrow('public registry destination blocked')
+    expect(calls).toBe(0)
+  })
+
+  test('blocks official redirects outside the specifically authorized base path', async () => {
+    const calls: string[] = []
+    const fetchImpl = (async (input: URL | RequestInfo) => {
+      calls.push(String(input))
+      return new Response(null, { status: 302, headers: { Location: 'https://skill.xfyun.cn/other/file' } })
+    }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://skill.xfyun.cn/approved', 'token', fetchImpl)
+    await expect(client.downloadFromUrl('/api/start')).rejects.toThrow('public registry destination blocked')
+    expect(calls).toEqual(['https://skill.xfyun.cn/approved/api/start'])
+  })
+
+  test('permits safe GET redirects inside the authorized private registry base path', async () => {
+    const calls: Array<{ url: string; authorization: string | null }> = []
+    const fetchImpl = (async (input: URL | RequestInfo, init?: RequestInit) => {
+      calls.push({ url: String(input), authorization: new Headers(init?.headers).get('Authorization') })
+      expect(init?.redirect).toBe('manual')
+      if (calls.length === 1) return new Response(null, { status: 302, headers: { Location: '/approved/api/cli/v1/skills/search?q=new' } })
+      return Response.json({ data: { items: [], total: 0, limit: 1 } })
+    }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://registry.test/approved', 'secret-token', fetchImpl)
+    expect(await client.search('demo', 1)).toEqual({ items: [], total: 0, limit: 1 })
+    expect(calls).toEqual([
+      { url: 'https://registry.test/approved/api/cli/v1/skills/search?q=demo&limit=1', authorization: 'Bearer secret-token' },
+      { url: 'https://registry.test/approved/api/cli/v1/skills/search?q=new', authorization: 'Bearer secret-token' }
+    ])
+  })
+
+  test.each(['https://other.test/approved/api', 'https://registry.test/outside/api', 'http://registry.test/approved/api'])('refuses GET redirect outside authorized scope: %s', async location => {
+    let calls = 0
+    const fetchImpl = (async () => { calls++; return new Response(null, { status: 302, headers: { Location: location } }) }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://registry.test/approved', 'secret-token', fetchImpl)
+    await expect(client.search('demo', 1)).rejects.toThrow('registry redirect refused')
+    expect(calls).toBe(1)
+  })
+
+  test('strips authorization on same-origin GET redirects outside the API and never restores it', async () => {
+    const calls: Array<string | null> = []
+    const fetchImpl = (async (_input: URL | RequestInfo, init?: RequestInit) => {
+      calls.push(new Headers(init?.headers).get('Authorization'))
+      if (calls.length === 1) return new Response(null, { status: 302, headers: { Location: '/approved/outside-api' } })
+      if (calls.length === 2) return new Response(null, { status: 302, headers: { Location: '/approved/api/cli/v1/skills/search' } })
+      return Response.json({ data: { items: [], total: 0, limit: 1 } })
+    }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://registry.test/approved', 'secret-token', fetchImpl)
+    await client.search('demo', 1)
+    expect(calls).toEqual(['Bearer secret-token', null, null])
+  })
+
+  test('does not replay a publish POST after even a same-scope redirect', async () => {
+    let calls = 0
+    const fetchImpl = (async () => { calls++; return new Response(null, { status: 307, headers: { Location: '/approved/api/cli/v1/skills/team/publish' } }) }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://registry.test/approved', 'secret-token', fetchImpl)
+    await expect(client.publish('team', new Blob(['zip']), 'PRIVATE')).rejects.toThrow('registry redirect refused')
+    expect(calls).toBe(1)
+  })
+
+  test('limits download redirects', async () => {
+    let calls = 0
+    const fetchImpl = (async () => { calls++; return new Response(null, { status: 302, headers: { Location: '/api/loop' } }) }) as unknown as typeof fetch
+    const client = new SkillHubClient('https://registry.test', 'token', fetchImpl)
+    await expect(client.downloadFromUrl('/api/start')).rejects.toThrow('too many download redirects')
+    expect(calls).toBe(6)
+  })
+
   test('uses the provided multipart file name when publishing', async () => {
     const fetchImpl = (async (_input: URL | RequestInfo, init?: RequestInit) => {
       const formData = init?.body as FormData
@@ -283,7 +479,8 @@ describe('SkillHubClient', () => {
   test('submitReview posts the lifecycle request with bearer auth', async () => {
     const fetchImpl = (async (input: URL | RequestInfo, init?: RequestInit) => {
       expect(String(input)).toContain('/api/v1/skills/team-a/demo/submit-review')
-      expect(init?.headers).toMatchObject({ Authorization: 'Bearer token', 'Content-Type': 'application/json' })
+      expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer token')
+      expect(new Headers(init?.headers).get('Content-Type')).toBe('application/json')
       expect(JSON.parse(String(init?.body))).toEqual({ version: '1.0.0', targetVisibility: 'NAMESPACE_ONLY' })
       return Response.json({ data: { skillId: 1, versionId: 2, action: 'SUBMIT_REVIEW', status: 'PENDING_REVIEW' } })
     }) as unknown as typeof fetch

@@ -7,8 +7,16 @@ import type { SkillHubConfig } from '../src/host/types.ts';
 const base: SkillHubConfig = { registryUrl: 'https://a.example', detailTabs: { versions: 'auto', reviews: 'hide', securityAudit: 'show' },
   savedRegistries: [{ name: 'A', url: 'https://a.example/' }, { name: 'B', url: 'https://b.example' }] };
 describe('saved registry configuration', () => {
-  test('legacy default, custom source and explicit disconnect survive schema resolution', () => {
-    expect(Config({}).get()).toMatchObject({ registryUrl: 'https://skill.xfyun.cn', savedRegistries: [] });
+  test('official approval defaults to empty and is retained only when explicitly saved', () => {
+    const previous = { ...base, registryUrl: 'https://skill.xfyun.cn' };
+    expect(Config(previous).get().approvedOfficialRegistryUrl).toBe('');
+    const approved = { ...previous, approvedOfficialRegistryUrl: previous.registryUrl };
+    expect(Config(approved).get().approvedOfficialRegistryUrl).toBe(previous.registryUrl);
+    expect(validateRegistryConfig(approved).approvedOfficialRegistryUrl).toBe(previous.registryUrl);
+    expect(previous).not.toHaveProperty('approvedOfficialRegistryUrl');
+  });
+  test('missing source disconnects and explicit custom source survives schema resolution', () => {
+    expect(Config({}).get()).toMatchObject({ registryUrl: '', savedRegistries: [] });
     expect(Config({ registryUrl: '' }).get().registryUrl).toBe('');
     const custom = Config({ registryUrl: 'https://custom.example' }).get();
     expect(savedRegistryOptions(custom)).toEqual([{ name: '当前来源', url: 'https://custom.example' }]);

@@ -58,6 +58,7 @@ import { installationFailureCode } from './installation-failure.js';
 import type { LocalChangesSnapshot, VersionChangesSnapshot, VerifiedBackupReceipt } from './generated/native-contract.js';
 import type { ChangesView, ChangeDiffView, FileResetPlanView } from './types.js';
 import type { InstalledProjectionItem } from './generated/native-contract.js';
+import { isApprovedOfficialRegistry, isOfficialRegistry } from './registry-approval.js';
 import type { SkillFileEntry, SkillFileList, SkillFilePreview } from './types.js';
 
 declare module '@deepseek-ai/cordis' {
@@ -71,6 +72,7 @@ export class SkillHubService extends TypertRemoteService {
   private sourceRevision = randomUUID();
   private registry?: RegistryAdapter;
   private sourceInput = '';
+  private officialSourceBlocked = false;
   private readonly lifetime = new AbortController();
   private localRuntime?: LocalRuntime;
   private readonly favorites = new FavoritesStore();
@@ -144,10 +146,13 @@ export class SkillHubService extends TypertRemoteService {
   }
 
   private refreshSource(): void {
-    const source = this.configuration.get().registryUrl.trim();
-    if (source === this.sourceInput) return;
+    const config = this.configuration.get();
+    const source = config.registryUrl.trim();
+    const key = JSON.stringify([source, config.approvedOfficialRegistryUrl ?? '']);
+    if (key === this.sourceInput) return;
+    const blocked = isOfficialRegistry(source) && !isApprovedOfficialRegistry(source, config.approvedOfficialRegistryUrl);
     let registry: RegistryAdapter | undefined;
-    try { registry = source ? new RegistryAdapter(source) : undefined; }
+    try { registry = source && !blocked ? new RegistryAdapter(source) : undefined; }
     catch {
       throw new RemoteError('skillhub/registry-error', 'Invalid SkillHub source address.', {
         reason: 'INVALID_SOURCE', retryable: false,
@@ -162,7 +167,8 @@ export class SkillHubService extends TypertRemoteService {
     this.removalPlans.clear(); this.togglePlans.clear();
     this.capabilities.clear();
     this.registry = registry;
-    this.sourceInput = source;
+    this.officialSourceBlocked = blocked;
+    this.sourceInput = key;
     this.sourceRevision = randomUUID();
   }
 
@@ -174,6 +180,13 @@ export class SkillHubService extends TypertRemoteService {
   /** Probe an unsaved address independently of the active source and its selection state. */
   @Remote
   async testRegistryConnection(inputUrl: string, signal: AbortSignal): Promise<RegistryConnectionTest> {
+    const config = this.configuration.get();
+    if (isOfficialRegistry(inputUrl) && (!isApprovedOfficialRegistry(inputUrl, config.approvedOfficialRegistryUrl)
+      || !isApprovedOfficialRegistry(config.registryUrl, inputUrl))) {
+      throw new RemoteError('skillhub/registry-error', 'Official Registry connection requires explicit source approval.', {
+        reason: 'OFFICIAL_SOURCE_NOT_APPROVED', retryable: false,
+      });
+    }
     const started = performance.now();
     const deadline = AbortSignal.timeout(10_000);
     const combined = AbortSignal.any([signal, this.lifetime.signal, deadline]);
@@ -217,6 +230,7 @@ export class SkillHubService extends TypertRemoteService {
       sourceRevision: this.sourceRevision,
       registryUrl: this.registry?.source ?? '',
       configured: !!this.registry,
+      ...(this.officialSourceBlocked ? { blockedReason: 'OFFICIAL_REGISTRY_NOT_APPROVED' as const } : {}),
       detailTabs: { ...this.configuration.get().detailTabs },
     };
   }
@@ -1980,6 +1994,7 @@ export class SkillHubService extends TypertRemoteService {
   ): Promise<T> {
     this.assertSource(sourceRevision);
     if (!this.registry) {
+      if (this.officialSourceBlocked) throw new RemoteError('skillhub/registry-error', 'Official Registry connection requires explicit source approval.', { reason: 'OFFICIAL_SOURCE_NOT_APPROVED', retryable: false });
       throw new RemoteError('skillhub/source-not-configured', 'Configure a SkillHub source first.', { retryable: false });
     }
     try {

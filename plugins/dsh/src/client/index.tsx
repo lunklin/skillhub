@@ -60,9 +60,9 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
     const client = new QueryClient();
     ctx.inject(['configForms'], ctx => {
       const form = ctx.configForms.get<SkillHubConfig>('astron-skillhub');
-      let previous = form.getSnapshot().value?.registryUrl;
+      let previous = JSON.stringify([form.getSnapshot().value?.registryUrl, form.getSnapshot().value?.approvedOfficialRegistryUrl]);
       ctx.effect(() => form.subscribe(() => {
-        const current = form.getSnapshot().value?.registryUrl;
+        const current = JSON.stringify([form.getSnapshot().value?.registryUrl, form.getSnapshot().value?.approvedOfficialRegistryUrl]);
         if (current === previous) return;
         previous = current;
         void client.cancelQueries({ predicate: query => String(query.queryKey[0]).startsWith('skillhub-') }).then(() =>

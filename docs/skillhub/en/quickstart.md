@@ -13,7 +13,7 @@ Run commands in a terminal and first change to the project root that the target 
 | Item | Requirement or value | Check and activation |
 | --- | --- | --- |
 | Node.js | 18 or newer, with npm available | Run `node --version` and `npm --version`; reopen the terminal after changing the runtime environment |
-| Registry | Built-in address: `https://skill.xfyun.cn` | Priority: command argument, `SKILLHUB_REGISTRY`, local configuration, built-in address; environment changes apply to the current terminal |
+| Registry | Select a trusted registry | Priority: command argument, `SKILLHUB_REGISTRY`, local configuration; fail closed when unset; environment changes apply to the current terminal |
 | Installation scope | `project` or `user` | This page selects project scope explicitly; user scope is under the home directory and does not imply automatic discovery by every Agent |
 | Target Agent | This page uses `codex` | Use `claude-code` for Claude Code; the selection must match the Agent opening the project |
 
@@ -22,13 +22,12 @@ Run commands in a terminal and first change to the project root that the target 
 ## 1. Install the CLI and select a registry
 
 ```bash
-npm install -g @astron-team/skillhub
 skillhub version
 ```
 
 The version command should display `SkillHub CLI` followed by the installed version. If the command is unavailable, check that the npm global executable directory is on the current terminal's `PATH` before attempting skill installation.
 
-The default instance needs no address setting. For self-hosting, set the actual address in the current terminal and retain the same source for subsequent commands:
+Use a reviewed CHEERY Fork CLI. Set the trusted registry address in the current terminal and retain the same source for subsequent commands:
 
 ```bash
 export SKILLHUB_REGISTRY=https://skillhub.example.com
@@ -57,7 +56,7 @@ skillhub login
 skillhub whoami
 ```
 
-When no Token is available from command arguments, environment variables or the registry's saved credentials, login starts device authorization and prints an authorization address and device code. Browser login must be followed by device-code confirmation; an existing browser session is not a CLI credential. An existing Token is verified first, without automatically selecting another account. Remote terminals can use `skillhub login --no-open`. Available login methods and registration depend on instance configuration. `whoami` should identify the selected registry and account; see [accounts and access tokens](./guide/account-access.html).
+When no Token is available from command arguments, environment variables or the registry's saved credentials, login starts device authorization and prints an authorization address and device code. Browser login must be followed by device-code confirmation; an existing browser session is not a CLI credential. An existing Token is verified first, without automatically selecting another account. The CLI does not open a browser automatically; inspect the verification URL and consider possible external redirects before opening it. `--no-open` remains for compatibility. Available login methods and registration depend on instance configuration. `whoami` should identify the selected registry and account; see [accounts and access tokens](./guide/account-access.html).
 
 ## 3. Install and inspect files and records
 

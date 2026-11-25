@@ -99,7 +99,7 @@ describe('publish command — P0', () => {
     expect(result.stderr).toContain('zip')
   })
 
-  test('directory happy path: exit 0, default namespace=global, fileName ends in .zip, visibility=PUBLIC', async () => {
+  test('directory happy path: exit 0, default namespace=global, fileName ends in .zip, visibility=PRIVATE', async () => {
     const env = await createTempHome()
     registry = await startFakeRegistry({ token: 'sk_ok' })
     await login(env, registry.url)
@@ -114,7 +114,7 @@ describe('publish command — P0', () => {
     expect(registry.received.publish).not.toBeNull()
     expect(registry.received.publish!.namespace).toBe('global')
     expect(registry.received.publish!.fileName).toMatch(/\.zip$/)
-    expect(registry.received.publish!.visibility).toBe('PUBLIC')
+    expect(registry.received.publish!.visibility).toBe('PRIVATE')
   })
 
   test('directory publish excludes local SkillHub installation metadata', async () => {
@@ -666,6 +666,18 @@ test.each([true, false])('publish dry-run reports malformed ZIP examples without
   const result = await runCli(['publish', path, '--dry-run', '--registry', registry.url, '--token', 'sk_ok', ...(json ? ['--json'] : [])], { HOME: env.home })
   expect(result.exitCode).toBe(0)
   expect(registry.received.publish).toBeNull()
-  if (json) expect(JSON.parse(result.stdout)).toMatchObject({ valid: true, examplesStatus: 'invalid', warnings: [expect.stringContaining('ordinary package content')] })
-  else expect(result.stdout).toContain('remains ordinary package content')
+  if (json) {
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      valid: true,
+      uploadAttempted: true,
+      examplesStatus: 'invalid',
+      warnings: expect.arrayContaining([
+        expect.stringContaining('uploads the ZIP'),
+        expect.stringContaining('ordinary package content')
+      ])
+    })
+  } else {
+    expect(result.stdout).toContain('remains ordinary package content')
+    expect(result.stderr).toContain('uploads the ZIP')
+  }
 })

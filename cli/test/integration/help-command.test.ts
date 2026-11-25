@@ -2,11 +2,11 @@ import { describe, expect, test } from 'bun:test'
 import { runCli } from '../helpers/run-cli'
 
 describe('help command', () => {
-  test('documents interactive device login and the headless fallback', async () => {
+  test('documents manual device login and the token option', async () => {
     const result = await runCli(['help', 'login'])
 
     expect(result.exitCode).toBe(0)
-    expect(result.stdout).toContain('OAuth Device Flow')
+    expect(result.stdout).toContain('manually opened OAuth Device Flow URL')
     expect(result.stdout).toContain('--no-open')
     expect(result.stdout).toContain('--token')
   })
@@ -63,7 +63,7 @@ describe('help command', () => {
     const root = await runCli(['--help'])
     expect(root.exitCode).toBe(0)
     expect(root.stdout).toContain('GitHub repository skills on compatible registries')
-    expect(root.stdout).toContain('Check or update CLI itself')
+    expect(root.stdout).toContain('CLI updates and version checks are disabled in this Fork')
   })
 
   test('distinguishes skill upgrade from CLI self-update and namespace sync', async () => {
@@ -76,7 +76,7 @@ describe('help command', () => {
 
     const update = await runCli(['help', 'update'])
     expect(update.exitCode).toBe(0)
-    expect(update.stdout).toContain('Check or update CLI itself')
+    expect(update.stdout).toContain('CLI updates and version checks are disabled in this Fork')
 
     const sync = await runCli(['help', 'sync'])
     expect(sync.exitCode).toBe(0)

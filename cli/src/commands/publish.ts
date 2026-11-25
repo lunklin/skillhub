@@ -32,7 +32,7 @@ export async function publishCommand(path: string, options: PublishCommandOption
   const registry = resolveRegistry(options, process.env, await configStore.read())
   const token = resolveToken(options, process.env, await credentialsStore.getToken(registry))
   const namespace = options.namespace ?? 'global'
-  const visibility = options.visibility ?? 'public'
+  const visibility = options.visibility ?? 'private'
 
   if (!token) {
     throw new CliError('authentication required for publish', EXIT.auth, { next: 'run `skillhub login`' })
@@ -63,13 +63,23 @@ export async function publishCommand(path: string, options: PublishCommandOption
   const client = new SkillHubClient(registry, token)
 
   if (options.dryRun) {
-    const validation = await client.validatePublish(namespace, archiveBlob, toServerVisibility(visibility), archiveName)
-    const result = { ...validation, ...examples, warnings: [...new Set([...validation.warnings, ...examples.warnings])] }
+    const uploadWarning = '--dry-run uploads the ZIP to the selected registry for validation.'
+    if (!options.json) process.stderr.write(`Warning: ${uploadWarning}\n`)
+    let validation
+    try {
+      validation = await client.validatePublish(namespace, archiveBlob, toServerVisibility(visibility), archiveName)
+    } catch (error) {
+      if (error instanceof CliError) {
+        throw new CliError(error.message, error.exitCode, { ...error.details, uploadAttempted: true, uploadWarning })
+      }
+      throw new CliError('validation request failed', EXIT.generic, { uploadAttempted: true, uploadWarning })
+    }
+    const result = { ...validation, ...examples, uploadAttempted: true, warnings: [...new Set([uploadWarning, ...validation.warnings, ...examples.warnings])] }
 
     if (options.json) {
       if (!result.valid) {
         process.stdout.write(JSON.stringify(result) + '\n')
-        throw new CliError('validation failed', EXIT.validation)
+        throw new CliError('validation failed', EXIT.validation, { uploadAttempted: true, uploadWarning })
       }
       return JSON.stringify(result)
     }

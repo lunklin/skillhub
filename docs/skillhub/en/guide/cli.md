@@ -17,7 +17,7 @@ SkillHub CLI is the official command-line tool for SkillHub, designed for search
 
 Existing command names and compatibility entry points remain supported. `repository check` and
 `repository upgrade --check` use the same read-only plan. `outdated` discovers updates, selected-skill
-`upgrade --check` previews an upgrade, and `update` updates the CLI itself. `suite check` inspects the
+`upgrade --check` previews an upgrade, and `update` is disabled; use the reviewed Fork release process. `suite check` inspects the
 installed Suite and member state; `suite upgrade --check` previews remote member changes. `sync`
 manages namespace authoring workspaces, not server-side GitHub synchronization; `status` lists all
 states and `diff` shows differences. See the [complete CLI command reference](https://github.com/iflytek/skillhub/blob/main/cli/README.md#-command-reference).
@@ -35,14 +35,8 @@ For directory conflicts, inspect source ownership before using `--force`: it doe
 ## Installation
 
 ```bash
-# Install globally via npm
-npm install -g @astron-team/skillhub
-
-# Or run directly with npx
-npx @astron-team/skillhub@latest version
-
-# Or install globally via Bun
-bun add -g @astron-team/skillhub
+# Use a reviewed CHEERY Fork CLI supplied through the approved release process
+skillhub version
 ```
 
 ## Quick Start
@@ -71,7 +65,7 @@ The active registry is resolved in the following priority order:
 1. `--registry <url>` command-line argument
 2. `SKILLHUB_REGISTRY` environment variable
 3. `registry` in `~/.skillhub/config.json`
-4. Default value `https://skill.xfyun.cn`
+4. If none is configured, stop and select a trusted registry.
 
 ```bash
 # Temporarily use another registry
@@ -103,7 +97,7 @@ Token resolution priority:
 
 ### Login
 
-When no token is resolved from arguments, environment variables, or saved registry credentials, `skillhub login` uses OAuth Device Flow; an invalid resolved token does not automatically fall back: follow the verification URL and user code to authorize in a browser. Use `skillhub login --no-open` on headless terminals, or an API token for automation.
+When no token is resolved from arguments, environment variables, or saved registry credentials, `skillhub login` uses OAuth Device Flow; an invalid resolved token does not automatically fall back: inspect the displayed verification URL before opening it manually; the page may redirect externally. The CLI never opens a browser automatically. `--no-open` remains for compatibility; use an API token for automation.
 
 ```bash
 # Login with API token
@@ -265,7 +259,7 @@ DeepSeek Harness resolves project skills from the nearest Git repository root, w
 ```json
 {
   "schemaVersion": 1,
-  "registry": "https://skill.xfyun.cn",
+  "registry": "https://skillhub.example.com",
   "namespace": "global",
   "slug": "pdf-parser",
   "version": "1.0.0",
@@ -464,27 +458,15 @@ skillhub publish ./my-skill --namespace myspace --visibility private
 ```
 
 Visibility options:
-- `public` (default) — Visible to everyone
+- `public` — Visible to everyone
 - `namespace-only` — Visible to namespace members only
-- `private` — Visible to yourself only
+- `private` (default for `publish`) — A private upload creates a candidate. A user with private publication permission can confirm it separately. The server does not create a manual review task for this visibility.
 
 After the server accepts the submission, the CLI shows its current status and detail URL. `SCANNING` and `PENDING_REVIEW` are asynchronous states, not final publication; check the detail page for completion.
 
 ## Self-Update
 
-```bash
-# Check for new version
-skillhub update --check
-
-# Execute update
-skillhub update
-```
-
-Update mechanism:
-- Installed via npm globally: Auto-executes `npm install -g @astron-team/skillhub@latest`
-- Installed via Bun globally: Auto-executes `bun add -g @astron-team/skillhub@latest`
-- Run via npx: Prompts manual update command
-- Unknown installation method: Prompts manual update
+Automatic CLI self-update is disabled in this Fork. Use the reviewed Fork release process.
 
 ## Environment Variables
 
@@ -506,7 +488,7 @@ Update mechanism:
 
 ```json
 {
-  "registry": "https://skill.xfyun.cn",
+  "registry": "https://skillhub.example.com",
   "defaultAgent": "codex",
   "lastUpdateCheckAt": "2026-04-28T06:00:00.000Z"
 }
@@ -517,7 +499,7 @@ Update mechanism:
 ```json
 {
   "tokens": {
-    "https://skill.xfyun.cn": "sk_xxx",
+    "https://skillhub.example.com": "sk_xxx",
     "https://skillhub.example.com": "sk_yyy"
   }
 }
@@ -556,7 +538,7 @@ Error response format:
   "message": "error message",
   "exitCode": 2,
   "details": {
-    "registry": "https://skill.xfyun.cn",
+    "registry": "https://skillhub.example.com",
     "next": "run `skillhub login`"
   }
 }
@@ -737,7 +719,7 @@ skillhub suite <install|check|upgrade|remove> <coordinate> [options]
 skillhub sync <pull|status|diff|push> --namespace <slug> [options]
 ```
 
-Run `skillhub help sync` for selection, workspace and publishing options. Validate with `push --dry-run` before publishing.
+Run `skillhub help sync` for selection, workspace and publishing options. `push --dry-run` uploads package bytes to the selected registry; obtain authorization before sending.
 
 ### update
 
@@ -745,7 +727,7 @@ Run `skillhub help sync` for selection, workspace and publishing options. Valida
 skillhub update [--check] [--json]
 ```
 
-Check or execute CLI self-update.
+CLI self-update and version lookup are disabled in this Fork; use the reviewed Fork release process.
 
 ## Security Notes
 
@@ -771,7 +753,7 @@ skillhub login --token sk_xxx
 
 ```bash
 # Check if registry is accessible
-curl 'https://skill.xfyun.cn/api/cli/v1/skills/search?q=test&limit=1'
+curl "${SKILLHUB_REGISTRY:?set a trusted registry}/api/cli/v1/skills/search?q=test&limit=1"
 
 # Use alternative registry
 skillhub search test --registry https://skillhub.example.com

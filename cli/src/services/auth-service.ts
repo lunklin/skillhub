@@ -3,6 +3,7 @@ import { ConfigStore } from '../stores/config-store'
 import { CredentialsStore } from '../stores/credentials-store'
 import { CliError } from '../shared/errors'
 import { EXIT } from '../shared/constants'
+import { isAllowedOfficialDestination } from './registry-service'
 
 export class AuthService {
   private readonly clientFactory: (registry: string, token?: string) => SkillHubClient
@@ -51,11 +52,16 @@ export class AuthService {
     let verificationUri: string
     try {
       const parsedVerificationUri = new URL(device.verificationUri, `${registry}/`)
-      if (parsedVerificationUri.protocol !== 'http:' && parsedVerificationUri.protocol !== 'https:') {
+      if ((parsedVerificationUri.protocol !== 'http:' && parsedVerificationUri.protocol !== 'https:')
+        || parsedVerificationUri.username || parsedVerificationUri.password) {
         throw new Error('unsupported protocol')
       }
+      if (!isAllowedOfficialDestination(registry, parsedVerificationUri)) {
+        throw new CliError('public registry verification URL is outside the authorized registry scope', EXIT.auth, { registry })
+      }
       verificationUri = parsedVerificationUri.toString()
-    } catch {
+    } catch (error) {
+      if (error instanceof CliError) throw error
       throw new CliError('registry returned invalid device verification URL', EXIT.auth, { registry })
     }
     await onVerification({ userCode: device.userCode, verificationUri, expiresIn: device.expiresIn })

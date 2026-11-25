@@ -545,6 +545,14 @@ node test/integration/registry-switching-browser.mjs
 
 `registry-config-probe.mjs` 是独立 React 组件测试，使用 mock ConfigForm；其结果不能替代以上真实 Host 验收。以上测试使用测试 Registry，均不能替代真实 SaaS 或真实模型对话验收。
 
+来源授权的无网络组件回归可在安装 `web/` 和 `plugins/dsh/` 的锁定开发依赖后，从 `plugins/dsh/` 运行：
+
+```sh
+bun test/integration/registry-approval-dom.mjs
+```
+
+该脚本复用 `web/` 的 jsdom 与隔离 ConfigForm 夹具，检查旧官方地址默认断开、勾选后保存才可测试连接、撤销保存后再次禁用；测试回调不会请求 Registry。它不启动真实 DSH Host，也不提供独立 Preview 或替代人工验收。
+
 ### 升级变化与本地文件撤销
 
 `change-preview-component.tsx` 是真实 React 组件的隔离夹具，模拟 Remote 响应，用于顺序步骤、取消、失败重试、只读门禁、长差异滚动和键盘焦点检查；其结果不代表 Host 文件事务通过。

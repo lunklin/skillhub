@@ -45,6 +45,41 @@ describe('AuthService device flow', () => {
     expect(setToken).toHaveBeenCalledWith('https://skillhub.example.com', 'oauth-secret')
   })
 
+  test.each([
+    ['https://private.example', 'https://skill.xfyun.cn/device'],
+    ['https://skill.xfyun.cn/approved', 'http://skill.xfyun.cn/approved/device'],
+    ['https://skill.xfyun.cn/approved', 'https://skill.xfyun.cn:8443/approved/device'],
+    ['https://skill.xfyun.cn/approved', 'https://skill.xfyun.cn/other/device'],
+    ['https://skill.xfyun.cn/approved', 'https://skill.xfyun.cn/approved/%2f..%2fother']
+  ])('rejects an unauthorized verification URL before launching or polling: %s -> %s', async (registry, verificationUri) => {
+    const onVerification = mock(async () => {})
+    const pollDeviceToken = mock(async () => ({}))
+    const service = new AuthService(
+      { setRegistry: mock(async () => {}) } as never,
+      { setToken: mock(async () => {}) } as never,
+      { clientFactory: (() => ({
+        requestDeviceCode: async () => ({ deviceCode: 'device-secret', userCode: 'ABCD', verificationUri, expiresIn: 60, interval: 1 }),
+        pollDeviceToken
+      })) as never }
+    )
+    await expect(service.loginWithDeviceFlow(registry, onVerification)).rejects.toThrow('outside the authorized registry scope')
+    expect(onVerification).not.toHaveBeenCalled()
+    expect(pollDeviceToken).not.toHaveBeenCalled()
+  })
+
+  test('permits the official verification URL inside its explicitly selected scope', async () => {
+    const onVerification = mock(async () => { throw new Error('stop after verified callback') })
+    const service = new AuthService(
+      { setRegistry: mock(async () => {}) } as never,
+      { setToken: mock(async () => {}) } as never,
+      { clientFactory: (() => ({ requestDeviceCode: async () => ({
+        deviceCode: 'device-secret', userCode: 'ABCD', verificationUri: 'https://skill.xfyun.cn/approved/device', expiresIn: 60, interval: 1
+      }) })) as never }
+    )
+    await expect(service.loginWithDeviceFlow('https://skill.xfyun.cn/approved', onVerification)).rejects.toThrow('stop after verified callback')
+    expect(onVerification).toHaveBeenCalledTimes(1)
+  })
+
   test('stops at expiry without persisting credentials', async () => {
     const setRegistry = mock(async () => {})
     const setToken = mock(async () => {})

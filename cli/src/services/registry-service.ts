@@ -1,11 +1,20 @@
-import { DEFAULT_REGISTRY } from '../shared/constants'
+import { EXIT } from '../shared/constants'
+import { CliError } from '../shared/errors'
+import { isOfficialRegistry } from '../shared/registry-scope'
+
+export { isOfficialRegistry, isWithinRegistryScope, isAllowedOfficialDestination } from '../shared/registry-scope'
 
 export function resolveRegistry(
   args: { registry?: string | undefined },
   env: NodeJS.ProcessEnv,
   config: { registry?: string | undefined }
 ): string {
-  return normalizeRegistry(args.registry || env.SKILLHUB_REGISTRY || config.registry || DEFAULT_REGISTRY)
+  const selected = args.registry || env.SKILLHUB_REGISTRY || config.registry
+  if (!selected) throw new CliError('Registry is not configured; specify --registry or configure a trusted registry', EXIT.usage)
+  if (!args.registry && isOfficialRegistry(selected)) {
+    throw new CliError('The saved public registry requires explicit authorization: select it with --registry or configure a trusted registry', EXIT.usage)
+  }
+  return normalizeRegistry(selected)
 }
 
 export function resolveToken(

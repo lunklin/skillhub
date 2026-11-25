@@ -11,6 +11,7 @@ import { snapshotInstalledSkillDirectory } from './installed-skill-snapshot'
 import { installSkill } from './install-service'
 import { readInstalledSkillMetadata, sameInstalledSkillSource } from './installed-skill-metadata'
 import { compareSkillVersions, type SkillVersionOrder } from './skill-version-order'
+import { isOfficialRegistry } from './registry-service'
 
 export const MAX_UPGRADE_SELECTION = 50
 
@@ -100,6 +101,11 @@ export async function planSkillUpgrades(options: UpgradeSelectionOptions): Promi
       selectedTargets: selection.targets,
       expectedTargetFiles: {} as Record<string, Record<string, string>>,
       allowTargetDrift: options.force
+    }
+
+    if (isOfficialRegistry(selection.item.registry) && !options.registry) {
+      items.push({ ...base, action: 'blocked', reason: 'Installed skill points to the public registry; review its source and explicitly select a registry before connecting' })
+      continue
     }
 
     let resolved: ResolveResponse

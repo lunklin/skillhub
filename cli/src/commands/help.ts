@@ -14,7 +14,7 @@ export const commands = {
     examples: ['skillhub version', 'skillhub version --json', 'skillhub --version', 'skillhub -v']
   },
   login: {
-    summary: 'Log in with OAuth Device Flow or an API token',
+    summary: 'Log in with an API token or manually opened OAuth Device Flow URL',
     usage: 'skillhub login [--token <token>] [--no-open] [--registry <url>] [--json]',
     examples: [
       'skillhub login --registry https://skillhub.example.com',
@@ -122,7 +122,7 @@ export const commands = {
     examples: ['skillhub publish ./my-skill', 'skillhub publish ./my-skill --namespace myspace']
   },
   update: {
-    summary: 'Check or update CLI itself',
+    summary: 'CLI updates and version checks are disabled in this Fork',
     usage: 'skillhub update [--check] [--json]',
     examples: ['skillhub update --check', 'skillhub update']
   }

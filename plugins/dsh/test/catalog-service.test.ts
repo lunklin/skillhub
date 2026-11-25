@@ -5,16 +5,93 @@ import { Config } from '../src/host/config.ts';
 import type { TabMode } from '../src/host/types.ts';
 
 describe('native catalog service', () => {
-  test.each([undefined, {}])('missing Registry uses the official default without fetching (%j)', async configuration => {
+  test.each(['https://skill.xfyun.cn', 'https://SKILL.XFYUN.CN:443/base', 'http://skill.xfyun.cn:8080', 'https://skill.xfyun.cn./'])('saved official source %s is blocked without changing config or fetching', async registryUrl => {
+    const fetchSpy = spyOn(globalThis, 'fetch').mockImplementation(Object.assign(
+      () => { throw new Error('Unexpected network request.'); }, { preconnect: fetch.preconnect }));
+    const config = { registryUrl, savedRegistries: [{ name: 'legacy', url: registryUrl }] };
+    const original = JSON.stringify(config);
+    const ctx = new Context();
+    const fiber = ctx.plugin(SkillHubService, config);
+    try {
+      await fiber;
+      const current = ctx.skillhub.getContext();
+      expect(current).toMatchObject({ configured: false, blockedReason: 'OFFICIAL_REGISTRY_NOT_APPROVED' });
+      await expect(ctx.skillhub.listSkills(current.sourceRevision, '', new AbortController().signal))
+        .rejects.toMatchObject({ code: 'skillhub/registry-error', details: { reason: 'OFFICIAL_SOURCE_NOT_APPROVED' } });
+      await expect(ctx.skillhub.testRegistryConnection(registryUrl, new AbortController().signal))
+        .rejects.toMatchObject({ code: 'skillhub/registry-error', details: { reason: 'OFFICIAL_SOURCE_NOT_APPROVED' } });
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(JSON.stringify(config)).toBe(original);
+    } finally { await fiber.dispose(); fetchSpy.mockRestore(); }
+  });
+
+  test('official approval is source-bound and revocation invalidates the current revision', async () => {
+    const fetchSpy = spyOn(globalThis, 'fetch').mockImplementation(Object.assign(
+      async () => Response.json({ data: { items: [], total: 0, limit: 20 } }), { preconnect: fetch.preconnect }));
+    const source = 'https://skill.xfyun.cn/base';
+    let current = { registryUrl: source, approvedOfficialRegistryUrl: '', detailTabs: {
+      versions: 'auto' as TabMode, securityAudit: 'auto' as TabMode, reviews: 'auto' as TabMode,
+    } };
+    const ctx = new Context();
+    const fiber = ctx.plugin(ctx => { new SkillHubService(ctx, { get: () => current }); });
+    try {
+      await fiber;
+      const blocked = ctx.skillhub.getContext();
+      current = { ...current, approvedOfficialRegistryUrl: source };
+      const approved = ctx.skillhub.getContext();
+      expect(approved.configured).toBe(true);
+      expect(approved.sourceRevision).not.toBe(blocked.sourceRevision);
+      await ctx.skillhub.listSkills(approved.sourceRevision, '', new AbortController().signal);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      await expect(ctx.skillhub.testRegistryConnection('https://skill.xfyun.cn/other', new AbortController().signal))
+        .rejects.toMatchObject({ details: { reason: 'OFFICIAL_SOURCE_NOT_APPROVED' } });
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      current = { ...current, approvedOfficialRegistryUrl: '' };
+      const revoked = ctx.skillhub.getContext();
+      expect(revoked.sourceRevision).not.toBe(approved.sourceRevision);
+      expect(revoked).toMatchObject({ configured: false, blockedReason: 'OFFICIAL_REGISTRY_NOT_APPROVED' });
+      await expect(ctx.skillhub.listSkills(approved.sourceRevision, '', new AbortController().signal))
+        .rejects.toMatchObject({ code: 'skillhub/context-stale' });
+      await expect(ctx.skillhub.listSkills(revoked.sourceRevision, '', new AbortController().signal))
+        .rejects.toMatchObject({ details: { reason: 'OFFICIAL_SOURCE_NOT_APPROVED' } });
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    } finally { await fiber.dispose(); fetchSpy.mockRestore(); }
+  });
+
+  test('revoking official approval discards a previously started response', async () => {
+    const reached = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const fetchSpy = spyOn(globalThis, 'fetch').mockImplementation(Object.assign(async () => {
+      reached.resolve(); await release.promise;
+      return Response.json({ data: { items: [], total: 0, limit: 20 } });
+    }, { preconnect: fetch.preconnect }));
+    let current = { registryUrl: 'https://skill.xfyun.cn', approvedOfficialRegistryUrl: 'https://skill.xfyun.cn', detailTabs: {
+      versions: 'auto' as TabMode, securityAudit: 'auto' as TabMode, reviews: 'auto' as TabMode,
+    } };
+    const ctx = new Context();
+    const fiber = ctx.plugin(ctx => { new SkillHubService(ctx, { get: () => current }); });
+    try {
+      await fiber;
+      const before = ctx.skillhub.getContext();
+      const pending = ctx.skillhub.listSkills(before.sourceRevision, '', new AbortController().signal).catch(error => error);
+      await reached.promise;
+      current = { ...current, approvedOfficialRegistryUrl: '' };
+      expect(ctx.skillhub.getContext().sourceRevision).not.toBe(before.sourceRevision);
+      release.resolve();
+      expect(await pending).toMatchObject({ code: 'skillhub/context-stale' });
+    } finally { release.resolve(); await fiber.dispose(); fetchSpy.mockRestore(); }
+  });
+
+  test.each([undefined, {}])('missing Registry stays disconnected without fetching (%j)', async configuration => {
     const fetchSpy = spyOn(globalThis, 'fetch').mockImplementation(Object.assign(
       () => { throw new Error('Unexpected network request.'); }, { preconnect: fetch.preconnect }));
     const ctx = new Context();
     const fiber = ctx.plugin(SkillHubService, configuration);
     try {
       await fiber;
-      expect(Config(configuration).get()).toMatchObject({ registryUrl: 'https://skill.xfyun.cn' });
+      expect(Config(configuration).get()).toMatchObject({ registryUrl: '' });
       expect(ctx.skillhub.getContext()).toMatchObject({
-        configured: true, registryUrl: 'https://skill.xfyun.cn',
+        configured: false, registryUrl: '',
         detailTabs: { versions: 'auto', securityAudit: 'auto', reviews: 'auto' },
       });
       expect(fetchSpy).not.toHaveBeenCalled();

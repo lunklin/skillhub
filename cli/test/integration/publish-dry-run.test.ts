@@ -45,6 +45,8 @@ describe('publish --dry-run', () => {
 
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain('Validation passed')
+    expect(result.stderr).toContain('--dry-run uploads the ZIP')
+    expect(registry.received.validate!.visibility).toBe('PRIVATE')
     expect(registry.received.validate).not.toBeNull()
     expect(registry.received.validate!.namespace).toBe('global')
     expect(registry.received.publish).toBeNull()
@@ -73,6 +75,10 @@ describe('publish --dry-run', () => {
     expect(result.exitCode).toBe(6)
     const json = JSON.parse(result.stdout)
     expect(json.valid).toBe(false)
+    expect(json.uploadAttempted).toBe(true)
+    const error = JSON.parse(result.stderr)
+    expect(error.details.uploadAttempted).toBe(true)
+    expect(error.details.uploadWarning).toContain('uploads the ZIP')
     expect(json.resolvedSlug).toBe('my-skill')
     expect(json.resolvedVersion).toBe('2.0.0')
     expect(json.warnings).toContain('Disallowed file extension: data.bin')
@@ -173,6 +179,32 @@ describe('publish --dry-run', () => {
     expect(result.exitCode).toBe(2)
     expect(result.stderr).toContain('scope')
     expect(result.stderr).toContain('Request ID: req-test-forbidden')
+  })
+
+  test('--json preserves structured error and upload warning when validation is rejected', async () => {
+    const env = await createTempHome()
+    registry = await startFakeRegistry({ token: 'sk_ok', failures: { validate: 'forbidden' } })
+    await login(env, registry.url)
+    const dir = await makeTempDir(['SKILL.md', '---\nname: test\ndescription: test\n---\n'])
+    const result = await runCli(['publish', dir, '--dry-run', '--json', '--registry', registry.url], { HOME: env.home, USERPROFILE: env.home })
+    expect(result.exitCode).toBe(2)
+    const error = JSON.parse(result.stderr)
+    expect(error.details.uploadAttempted).toBe(true)
+    expect(error.details.uploadWarning).toContain('uploads the ZIP')
+    expect(result.stdout).toBe('')
+  })
+
+  test('--json reports upload risk in successful validation output', async () => {
+    const env = await createTempHome()
+    registry = await startFakeRegistry({ token: 'sk_ok' })
+    await login(env, registry.url)
+    const dir = await makeTempDir(['SKILL.md', '---\nname: test\ndescription: test\n---\n'])
+    const result = await runCli(['publish', dir, '--dry-run', '--json', '--registry', registry.url], { HOME: env.home, USERPROFILE: env.home })
+    expect(result.exitCode).toBe(0)
+    expect(result.stderr).toBe('')
+    const output = JSON.parse(result.stdout)
+    expect(output.uploadAttempted).toBe(true)
+    expect(output.warnings.some((value: string) => value.includes('uploads the ZIP'))).toBe(true)
   })
 
   test('--dry-run uses a neutral fallback without leaking an unstructured 403 body', async () => {

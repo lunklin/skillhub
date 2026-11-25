@@ -13,7 +13,7 @@
 | 项目 | 要求或取值 | 检查与生效方式 |
 | --- | --- | --- |
 | Node.js | 最低18，且 npm 可用 | 执行 `node --version`、`npm --version`；更换运行环境后重新打开终端 |
-| 注册中心 | 内置地址为 `https://skill.xfyun.cn` | 选择顺序为命令参数、`SKILLHUB_REGISTRY`、本地配置、内置地址；环境变量在当前终端生效 |
+| 注册中心 | 明确选择可信注册中心 | 选择顺序为命令参数、`SKILLHUB_REGISTRY`、本地配置；未配置时停止；环境变量在当前终端生效 |
 | 安装范围 | `project` 或 `user` | 本页显式使用项目级；用户级位于主目录，不等于所有 Agent 都会自动加载 |
 | 目标 Agent | 本页使用 `codex` | Claude Code 改用 `claude-code`；必须与实际打开项目的 Agent 一致 |
 
@@ -22,13 +22,12 @@
 ## 1. 安装 CLI 并选择注册中心
 
 ```bash
-npm install -g @astron-team/skillhub
 skillhub version
 ```
 
 版本命令应输出 `SkillHub CLI` 及实际安装版本。出现命令不存在时，应先检查 npm 全局可执行目录是否位于当前终端的 `PATH`，不要继续执行安装技能命令。
 
-使用默认实例时无需设置地址。自托管实例在当前终端设置实际地址，随后所有命令保持同一来源：
+使用已審核的 CHEERY Fork CLI；在當前終端設定可信的實際地址，隨後所有命令保持同一來源：
 
 ```bash
 export SKILLHUB_REGISTRY=https://skillhub.example.com
@@ -57,7 +56,7 @@ skillhub login
 skillhub whoami
 ```
 
-不存在命令参数、环境变量或该注册中心保存的 Token 时，登录进入设备授权，终端显示授权地址与设备码。浏览器登录后须完成设备码确认；网页已有登录态不等于 CLI 已获凭据。已有 Token 时会先验证该凭据，不会自动选择其他账号。远程终端使用 `skillhub login --no-open`；可用登录方式和注册入口由实例配置决定。`whoami` 应显示所选注册中心和账号，具体处理见[账号与访问令牌](./guide/account-access.html)。
+不存在命令参数、环境变量或该注册中心保存的 Token 时，登录进入设备授权，终端显示授权地址与设备码。浏览器登录后须完成设备码确认；网页已有登录态不等于 CLI 已获凭据。已有 Token 时会先验证该凭据，不会自动选择其他账号。CLI 不自动打开浏览器；请先核对验证地址并留意可能的外部跳转。`--no-open` 仅保留兼容；可用登录方式和注册入口由实例配置决定。`whoami` 应显示所选注册中心和账号，具体处理见[账号与访问令牌](./guide/account-access.html)。
 
 ## 3. 安装并检查文件与记录
 

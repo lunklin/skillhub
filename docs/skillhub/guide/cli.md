@@ -17,7 +17,7 @@ SkillHub CLI 是 SkillHub 的第一方命令行工具，用于搜索、安装、
 
 保留现有命令名与兼容入口，不要求改写历史脚本。`repository check` 与 `repository upgrade --check`
 使用同一只读计划；`outdated` 负责发现更新，`upgrade --check` 预览明确选择的技能更新，`update`
-更新 CLI 本身。`suite check` 检查已安装套装及成员状态，`suite upgrade --check` 预览新版成员变化，
+不自动更新 CLI，须使用审核后的 Fork 发布流程。`suite check` 检查已安装套装及成员状态，`suite upgrade --check` 预览新版成员变化，
 二者职责不同。`sync` 面向命名空间创作工作区，不负责服务端 GitHub 同步；`status` 展示全部状态，
 `diff` 展示差异。完整命令清单见 [CLI README](https://github.com/iflytek/skillhub/blob/main/cli/README.md#-command-reference)。
 
@@ -34,14 +34,8 @@ SkillHub CLI 是 SkillHub 的第一方命令行工具，用于搜索、安装、
 ## 安装
 
 ```bash
-# 通过 npm 全局安装
-npm install -g @astron-team/skillhub
-
-# 或使用 npx 直接运行（无需安装）
-npx @astron-team/skillhub@latest version
-
-# 或通过 Bun 全局安装
-bun add -g @astron-team/skillhub
+# 使用已审核的 CHEERY Fork CLI
+skillhub version
 ```
 
 ## 快速开始
@@ -70,7 +64,7 @@ skillhub publish ./my-skill --namespace myspace
 1. `--registry <url>` 命令行参数
 2. `SKILLHUB_REGISTRY` 环境变量
 3. 用户配置文件 `~/.skillhub/config.json` 中的 `registry` 字段
-4. 默认值 `https://skill.xfyun.cn`
+4. 未配置时停止并要求选择可信注册中心
 
 ```bash
 # 临时使用其他 registry
@@ -102,7 +96,7 @@ Token 按以下优先级解析：
 
 ### 登录
 
-没有从命令行、环境变量或该注册中心保存记录读取到 Token 时，`skillhub login` 才使用 OAuth Device Flow；读取到无效 Token 时不会自动回退：打开验证页面并显示用户码，完成浏览器授权后保存凭证。无浏览器终端可用 `skillhub login --no-open`；自动化使用 API token。
+没有从命令行、环境变量或该注册中心保存记录读取到 Token 时，`skillhub login` 才使用 OAuth Device Flow；读取到无效 Token 时不会自动回退：仅显示验证地址及用户码，不自动打开浏览器；先核对目标并注意页面可能跳转，再由用户自行打开并授权。`--no-open` 仅保留兼容；自动化使用 API token。
 
 ```bash
 # 使用 API token 登录
@@ -259,7 +253,7 @@ DeepSeek Harness 从最近的 Git 仓库根目录解析项目技能，而 SkillH
 
 ```json
 {
-  "registry": "https://skill.xfyun.cn",
+  "registry": "https://skillhub.example.com",
   "namespace": "global",
   "slug": "pdf-parser",
   "version": "1.0.0",
@@ -422,27 +416,15 @@ skillhub publish ./my-skill --namespace myspace --visibility private
 ```
 
 可见性选项：
-- `public`（默认）— 所有人可见
+- `public` — 所有人可见
 - `namespace-only` — 仅 namespace 成员可见
-- `private` — 仅自己可见
+- `private`（`publish` 默认值）— 私有上传生成候选版本，拥有私有发布权限的用户可另行确认。服务端不会为此可见性自动创建人工审核任务。
 
 提交被服务端接受后会输出当前状态和技能详情页 URL。`SCANNING`、`PENDING_REVIEW` 表示异步处理尚未完成；请在详情页确认最终发布状态。
 
 ## 自更新
 
-```bash
-# 检查是否有新版本
-skillhub update --check
-
-# 执行更新
-skillhub update
-```
-
-更新机制：
-- 通过 npm 全局安装：自动执行 `npm install -g @astron-team/skillhub@latest`
-- 通过 Bun 全局安装：自动执行 `bun add -g @astron-team/skillhub@latest`
-- 通过 npx 运行：提示手动更新命令
-- 未知安装方式：提示手动更新
+本 Fork 不自动更新 CLI；请使用经过审核的 Fork 发布流程。
 
 ## 环境变量
 
@@ -464,7 +446,7 @@ skillhub update
 
 ```json
 {
-  "registry": "https://skill.xfyun.cn",
+  "registry": "https://skillhub.example.com",
   "defaultAgent": "codex",
   "lastUpdateCheckAt": "2026-04-28T06:00:00.000Z"
 }
@@ -475,7 +457,7 @@ skillhub update
 ```json
 {
   "tokens": {
-    "https://skill.xfyun.cn": "sk_xxx",
+    "https://skillhub.example.com": "sk_xxx",
     "https://skillhub.example.com": "sk_yyy"
   }
 }
@@ -514,7 +496,7 @@ skillhub doctor --json
   "message": "error message",
   "exitCode": 2,
   "details": {
-    "registry": "https://skill.xfyun.cn",
+    "registry": "https://skillhub.example.com",
     "next": "run `skillhub login`"
   }
 }
@@ -678,7 +660,7 @@ skillhub suite <install|check|upgrade|remove> <coordinate> [options]
 skillhub sync <pull|status|diff|push> --namespace <slug> [options]
 ```
 
-先运行 `skillhub help sync` 查看选择、工作区和发布参数；发布前使用 `push --dry-run` 验证。
+先运行 `skillhub help sync` 查看选择、工作区和发布参数；`push --dry-run` 会上传包内容到所选注册中心，须在授权后才能执行。
 
 ### update
 
@@ -686,7 +668,7 @@ skillhub sync <pull|status|diff|push> --namespace <slug> [options]
 skillhub update [--check] [--json]
 ```
 
-检查或执行 CLI 自更新。
+本 Fork 禁用 CLI 自更新及版本查询；请使用审核后的 Fork 发布流程。
 
 ## 安全说明
 
@@ -712,7 +694,7 @@ skillhub login --token sk_xxx
 
 ```bash
 # 检查 registry 是否可访问
-curl 'https://skill.xfyun.cn/api/cli/v1/skills/search?q=test&limit=1'
+curl "${SKILLHUB_REGISTRY:?set a trusted registry}/api/cli/v1/skills/search?q=test&limit=1"
 
 # 使用其他 registry
 skillhub search test --registry https://skillhub.example.com
