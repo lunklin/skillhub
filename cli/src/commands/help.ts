@@ -14,7 +14,7 @@ export const commands = {
     examples: ['skillhub version', 'skillhub version --json', 'skillhub --version', 'skillhub -v']
   },
   login: {
-    summary: 'Log in with an API token or manually opened Device Flow URL',
+    summary: 'Log in with an API token or manually opened OAuth Device Flow URL',
     usage: 'skillhub login [--token <token>] [--no-open] [--registry <url>] [--json]',
     examples: [
       'skillhub login --registry https://skillhub.example.com',

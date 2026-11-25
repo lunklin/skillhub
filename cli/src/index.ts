@@ -227,7 +227,7 @@ cli
   })
 
 cli
-  .command('update', 'CLI updates and checks are disabled in this Fork')
+  .command('update', 'CLI updates and version checks are disabled in this Fork')
   .option('--check', 'Version checks are disabled; use the reviewed Fork release process')
   .option('--json', 'Output JSON')
   .action((options: { check?: boolean; json?: boolean }) => {

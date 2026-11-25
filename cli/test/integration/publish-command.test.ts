@@ -666,6 +666,18 @@ test.each([true, false])('publish dry-run reports malformed ZIP examples without
   const result = await runCli(['publish', path, '--dry-run', '--registry', registry.url, '--token', 'sk_ok', ...(json ? ['--json'] : [])], { HOME: env.home })
   expect(result.exitCode).toBe(0)
   expect(registry.received.publish).toBeNull()
-  if (json) expect(JSON.parse(result.stdout)).toMatchObject({ valid: true, examplesStatus: 'invalid', warnings: [expect.stringContaining('ordinary package content')] })
-  else expect(result.stdout).toContain('remains ordinary package content')
+  if (json) {
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      valid: true,
+      uploadAttempted: true,
+      examplesStatus: 'invalid',
+      warnings: expect.arrayContaining([
+        expect.stringContaining('uploads the ZIP'),
+        expect.stringContaining('ordinary package content')
+      ])
+    })
+  } else {
+    expect(result.stdout).toContain('remains ordinary package content')
+    expect(result.stderr).toContain('uploads the ZIP')
+  }
 })
